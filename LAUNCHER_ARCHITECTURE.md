@@ -76,7 +76,7 @@ Desktop launchers cannot simply be copied to Android. Avero needs explicit handl
 
 - Android filesystem / scoped storage
 - ARM64 and x86_64 runtimes
-- Native libraries
+- Native libraries, including a replaceable Android LWJGL provider
 - Graphics translation / renderer selection
 - Process lifecycle and background restrictions
 - Memory pressure
@@ -84,13 +84,12 @@ Desktop launchers cannot simply be copied to Android. Avero needs explicit handl
 
 ## Current milestone
 
-The native Compose launcher shell and CI build are established.
+The native Compose shell, Microsoft authentication pipeline, official Mojang metadata/download pipeline, managed Android OpenJDK installer, Android LWJGL provider installation and native JLI/JVM bridge are established and covered by CI.
 
-Next implementation milestone:
+The next launch milestone is the first full vanilla game process:
 
-1. Account model and authentication interfaces
-2. Mojang version-manifest client
-3. Instance model
-4. Download manager
-5. Java runtime manager
-6. First vanilla launch experiment
+1. Persist/refresh account sessions without exposing tokens to UI logs.
+2. Combine the installed game, runtime and Android LWJGL provider into a launch-ready instance.
+3. Run Minecraft in an isolated `:game` Android process.
+4. Attach a Surface and renderer bridge for GLFW/LWJGL.
+5. Stream launch/crash diagnostics back to the launcher UI.
