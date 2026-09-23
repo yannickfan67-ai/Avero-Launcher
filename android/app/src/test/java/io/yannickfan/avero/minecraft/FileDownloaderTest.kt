@@ -203,6 +203,33 @@ class FileDownloaderTest {
         }
     }
 
+    @Test
+    fun validatesGitBlobSha1() {
+        val payload = "pinned-provider".toByteArray()
+        val root = Files.createTempDirectory("avero-git-blob-test-").toFile()
+        try {
+            val file = File(root, "provider.aar").apply { writeBytes(payload) }
+            val spec = DownloadSpec(
+                url = "https://example.invalid/provider.aar",
+                sha1 = null,
+                size = payload.size.toLong(),
+                gitBlobSha1 = gitBlobSha1(payload)
+            )
+
+            val valid = runBlocking { FileDownloader().isValid(spec, file) }
+            assertTrue(valid)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    private fun gitBlobSha1(data: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-1")
+        digest.update(("blob " + data.size + "\u0000").toByteArray())
+        digest.update(data)
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
     private fun sha1(data: ByteArray): String =
         MessageDigest.getInstance("SHA-1")
             .digest(data)
