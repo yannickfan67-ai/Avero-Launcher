@@ -7,7 +7,8 @@ class LaunchPlanner(
     fun createVanillaPlan(
         metadata: MinecraftVersionMetadata,
         instance: LauncherInstance,
-        context: RuleContext = MinecraftPlatform.androidRuleContext()
+        context: RuleContext = MinecraftPlatform.androidRuleContext(),
+        nativeClassifierPolicy: NativeClassifierPolicy = NativeClassifierPolicy.DISABLED
     ): LaunchPlan {
         require(instance.loader == Loader.VANILLA) {
             "Loader-specific metadata must be normalized before launch planning"
@@ -35,7 +36,11 @@ class LaunchPlanner(
             classpathEntries = classpath,
             jvmArguments = jvm,
             gameArguments = rules.resolveArguments(metadata.gameArguments, context),
-            nativeArchives = nativeResolver.resolve(allowedLibraries, context),
+            nativeArchives = nativeResolver.resolve(
+                allowedLibraries,
+                context,
+                nativeClassifierPolicy
+            ),
             logging = metadata.logging
         )
     }
