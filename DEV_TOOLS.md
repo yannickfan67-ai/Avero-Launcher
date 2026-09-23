@@ -1,6 +1,6 @@
-# Android development tools
+# Development tools for Avero
 
-Avero is intended to use a normal Android toolchain rather than hand-built APK packaging.
+This file describes software used to **develop Avero Launcher**. These are not launcher features.
 
 ## Primary desktop toolchain
 
@@ -12,30 +12,30 @@ Avero is intended to use a normal Android toolchain rather than hand-built APK p
 - Kotlin + Jetpack Compose
 - adb / logcat for device debugging
 
-## Command-line build tools
+## Command-line Android build tools
 
-The low-level tools are useful for diagnostics, custom build experiments and CI:
+Useful for diagnostics, CI and lower-level APK work:
 
 - aapt2
 - d8 / R8
 - zipalign
 - apksigner
-- sdkmanager / command-line tools
+- sdkmanager / Android command-line tools
 
-## On-device development
+## On-device development tools
 
 ### Termux
 
-Useful for Git, shell tools, scripting and custom compiler/toolchain work on Android.
+Useful for Git, shell tools, scripting, adb-related work and experimenting with Java/native toolchains directly on Android.
 
 ### CodeAssist
 
-A current open-source on-device Android/Java IDE. It builds directly with the Android toolchain and avoids a full Gradle daemon. Its license is GPL-3.0-or-later, so do not copy GPL implementation code into Avero's MIT codebase unless licensing is deliberately changed or the code is kept legally separate.
+An open-source Android/Java IDE that can be studied as a reference for running build tooling on-device. It is GPL-3.0-or-later, so its implementation code must not simply be copied into this MIT repository.
 
 ### AndroidIDE
 
-Historically one of the most complete Gradle-based Android IDEs on Android (JDK 17, Git, terminal, Java/Kotlin/XML language services). The original AndroidIDEOfficial project was archived in 2024 and is no longer maintained. Treat it as a design/reference project, not the primary maintained dependency.
+A formerly full-featured Gradle-based Android IDE on Android. The original project was archived in 2024. It is useful as a historical/reference implementation rather than a core Avero dependency.
 
-## Avero rule
+## Avero development rule
 
-Avero should remain an independent implementation. External IDE projects can be studied for product ideas, interoperability and workflow design, but code reuse must respect their licenses.
+Avero remains an independent Minecraft launcher implementation. External launcher/IDE projects may be studied for interoperability and workflow ideas, but code reuse must follow their licenses.
