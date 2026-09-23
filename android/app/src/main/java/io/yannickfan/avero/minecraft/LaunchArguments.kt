@@ -38,6 +38,7 @@ data class LaunchContext(
     val assetsRoot: String,
     val nativesDirectory: String,
     val librariesDirectory: String,
+    val clientJarPath: String,
     val launcherName: String = "Avero",
     val launcherVersion: String = "0.1.0",
     val resolutionWidth: Int? = null,
@@ -58,7 +59,8 @@ data class LaunchContext(
                 gameDirectory = root + "/instances/" + safeName + "/game",
                 assetsRoot = root + "/assets",
                 nativesDirectory = root + "/versions/" + metadata.id + "/natives",
-                librariesDirectory = root + "/libraries"
+                librariesDirectory = root + "/libraries",
+                clientJarPath = root + "/versions/" + metadata.id + "/" + metadata.id + ".jar"
             )
         }
     }
