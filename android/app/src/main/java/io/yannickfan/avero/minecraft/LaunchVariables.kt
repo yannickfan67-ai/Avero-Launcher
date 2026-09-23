@@ -16,8 +16,16 @@ data class LaunchContext(
     val launcherName: String = "Avero",
     val launcherVersion: String = "0.1.0",
     val resolutionWidth: Int? = null,
-    val resolutionHeight: Int? = null
+    val resolutionHeight: Int? = null,
+    val features: Map<String, Boolean> = emptyMap()
 ) {
+    fun ruleFeatures(): Map<String, Boolean> = buildMap {
+        putAll(features)
+        if (resolutionWidth != null && resolutionHeight != null) {
+            put("has_custom_resolution", true)
+        }
+    }
+
     companion object {
         fun preview(
             metadata: MinecraftVersionMetadata,
