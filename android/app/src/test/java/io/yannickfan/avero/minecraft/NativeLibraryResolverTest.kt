@@ -16,7 +16,7 @@ class NativeLibraryResolverTest {
             name = "example:native:1",
             artifact = null,
             classifiers = mapOf("natives-linux-64" to download),
-            natives = mapOf("linux" to "natives-linux-${arch}")
+            natives = mapOf("linux" to "natives-linux-\${arch}")
         )
 
         val result = NativeLibraryResolver().resolve(
