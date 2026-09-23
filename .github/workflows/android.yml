@@ -5,11 +5,15 @@ on:
     branches: [ main ]
     paths:
       - 'android/**'
+      - '*.md'
+      - '**/*.md'
       - '.github/workflows/android.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'android/**'
+      - '*.md'
+      - '**/*.md'
       - '.github/workflows/android.yml'
 
 concurrency:
