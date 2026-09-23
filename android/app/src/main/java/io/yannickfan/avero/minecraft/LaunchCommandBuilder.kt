@@ -48,6 +48,17 @@ class LaunchCommandBuilder {
         identity: LaunchIdentity,
         environment: LaunchEnvironment
     ): ResolvedLaunchCommand {
+        require(plan.nativeState.isLaunchable) {
+            when (plan.nativeState) {
+                NativePlanState.MISSING_ANDROID_PROVIDER ->
+                    "Android native provider is required before Minecraft can launch"
+                NativePlanState.MISSING_COMPATIBLE_ARCHIVES ->
+                    "Compatible native archives are missing for this launch target"
+                else ->
+                    "Minecraft native preparation is not launchable"
+            }
+        }
+
         val classpathSeparator = File.pathSeparator
         val classpath = plan.classpathEntries
             .map { entry -> File(environment.minecraftRoot, entry).absolutePath }
