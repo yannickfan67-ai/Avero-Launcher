@@ -9,7 +9,7 @@ import java.util.zip.ZipFile
 data class InstalledAndroidNativeProvider(
     val packageInfo: AndroidNativeProviderPackage,
     val root: File,
-    val classpathJar: File,
+    val classpathJars: List<File>,
     val nativeDirectory: File,
     val nativeLibraries: List<File>
 )
@@ -49,8 +49,9 @@ class AndroidNativeProviderInstaller(
             return@withContext installed
         }
 
-        val cache = File(minecraftRoot, "android-native/.downloads").apply { mkdirs() }
-        val archive = File(cache, "${pkg.id}.aar")
+        val cache = File(minecraftRoot, "android-native/.downloads/${pkg.id}")
+            .apply { mkdirs() }
+        val nativeArchive = File(cache, "natives.aar")
 
         onProgress(
             NativeProviderProgress(
@@ -59,17 +60,37 @@ class AndroidNativeProviderInstaller(
             )
         )
 
-        if (!downloader.isValid(pkg.download, archive)) {
-            downloader.download(pkg.download, archive) { done, total ->
+        if (!downloader.isValid(pkg.nativeArchive, nativeArchive)) {
+            downloader.download(pkg.nativeArchive, nativeArchive) { done, total ->
                 onProgress(
                     NativeProviderProgress(
                         stage = NativeProviderProgress.Stage.DOWNLOADING,
-                        message = "Downloading Android LWJGL ${pkg.lwjglVersion}",
+                        message = "Downloading Android LWJGL native AAR",
                         downloadedBytes = done,
                         totalBytes = total
                     )
                 )
             }
+        }
+
+        val componentFiles = linkedMapOf<AndroidNativeProviderComponent, File>()
+        for ((index, component) in pkg.javaComponents.withIndex()) {
+            val cached = File(cache, component.fileName)
+            if (!downloader.isValid(component.download, cached)) {
+                downloader.download(component.download, cached) { done, total ->
+                    onProgress(
+                        NativeProviderProgress(
+                            stage = NativeProviderProgress.Stage.DOWNLOADING,
+                            message =
+                                "LWJGL component ${index + 1}/${pkg.javaComponents.size} · " +
+                                    component.fileName,
+                            downloadedBytes = done,
+                            totalBytes = total
+                        )
+                    )
+                }
+            }
+            componentFiles[component] = cached
         }
 
         val staging = File(minecraftRoot, "android-native/.installing-${pkg.id}")
@@ -80,10 +101,28 @@ class AndroidNativeProviderInstaller(
             onProgress(
                 NativeProviderProgress(
                     NativeProviderProgress.Stage.EXTRACTING,
-                    "Extracting provider for ${pkg.arch.androidAbi}"
+                    "Preparing patched LWJGL Java components"
                 )
             )
-            extractProviderAar(archive, staging, pkg.arch.androidAbi)
+            val jarsDir = File(staging, "jars").apply { mkdirs() }
+            for ((component, cached) in componentFiles) {
+                cached.copyTo(
+                    target = File(jarsDir, component.fileName),
+                    overwrite = true
+                )
+            }
+
+            onProgress(
+                NativeProviderProgress(
+                    NativeProviderProgress.Stage.EXTRACTING,
+                    "Extracting native provider for ${pkg.arch.androidAbi}"
+                )
+            )
+            extractNativeAar(
+                archive = nativeArchive,
+                nativeDirectory = File(staging, "natives"),
+                androidAbi = pkg.arch.androidAbi
+            )
 
             onProgress(
                 NativeProviderProgress(
@@ -122,46 +161,39 @@ class AndroidNativeProviderInstaller(
     ): InstalledAndroidNativeProvider? =
         runCatching { requireValid(pkg, providerRoot) }.getOrNull()
 
-    private fun extractProviderAar(
+    private fun extractNativeAar(
         archive: File,
-        destination: File,
+        nativeDirectory: File,
         androidAbi: String
     ) {
-        val classpathJar = File(destination, "classes.jar")
-        val natives = File(destination, "natives").apply { mkdirs() }
-        var classJarFound = false
+        nativeDirectory.mkdirs()
         var nativeCount = 0
 
         ZipFile(archive).use { zip ->
             val entries = zip.entries()
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
-                if (entry.isDirectory) continue
-
-                when {
-                    entry.name == "classes.jar" -> {
-                        classpathJar.parentFile?.mkdirs()
-                        zip.getInputStream(entry).use { input ->
-                            classpathJar.outputStream().use(input::copyTo)
-                        }
-                        classJarFound = true
-                    }
-
-                    isAbiNative(entry.name, androidAbi) -> {
-                        val output = File(natives, File(entry.name).name)
-                        require(output.parentFile == natives) {
-                            "Invalid native library path: ${entry.name}"
-                        }
-                        zip.getInputStream(entry).use { input ->
-                            output.outputStream().use(input::copyTo)
-                        }
-                        nativeCount++
-                    }
+                if (entry.isDirectory || !isAbiNative(entry.name, androidAbi)) {
+                    continue
                 }
+
+                val fileName = File(entry.name).name
+                require(fileName.endsWith(".so") && !fileName.contains('/')) {
+                    "Invalid native library name: ${entry.name}"
+                }
+
+                val output = File(nativeDirectory, fileName)
+                require(output.canonicalFile.parentFile == nativeDirectory.canonicalFile) {
+                    "Invalid native library path: ${entry.name}"
+                }
+
+                zip.getInputStream(entry).use { input ->
+                    output.outputStream().use(input::copyTo)
+                }
+                nativeCount++
             }
         }
 
-        require(classJarFound) { "Provider AAR does not contain classes.jar" }
         require(nativeCount > 0) {
             "Provider AAR has no native libraries for $androidAbi"
         }
@@ -180,9 +212,13 @@ class AndroidNativeProviderInstaller(
     ): InstalledAndroidNativeProvider {
         require(root.isDirectory) { "Provider root is missing: $root" }
 
-        val classes = File(root, "classes.jar")
-        require(classes.isFile && classes.length() > 0) {
-            "Provider classes.jar is missing"
+        val jarsDir = File(root, "jars")
+        val classpathJars = pkg.javaComponents.map { component ->
+            File(jarsDir, component.fileName).also { jar ->
+                require(jar.isFile && jar.length() > 0) {
+                    "Provider Java component is missing: ${component.fileName}"
+                }
+            }
         }
 
         val natives = File(root, "natives")
@@ -198,17 +234,20 @@ class AndroidNativeProviderInstaller(
         return InstalledAndroidNativeProvider(
             packageInfo = pkg,
             root = root,
-            classpathJar = classes,
+            classpathJars = classpathJars,
             nativeDirectory = natives,
             nativeLibraries = libraries
         )
     }
 
     private fun normalizePermissions(installed: InstalledAndroidNativeProvider) {
-        installed.classpathJar.setWritable(false, false)
+        installed.classpathJars.forEach { jar ->
+            jar.setReadable(true, false)
+            jar.setWritable(false, false)
+        }
         installed.nativeLibraries.forEach { lib ->
-            lib.setWritable(false, false)
             lib.setReadable(true, false)
+            lib.setWritable(false, false)
         }
     }
 }
