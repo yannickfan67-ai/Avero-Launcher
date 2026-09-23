@@ -479,6 +479,13 @@ private fun SettingsScreen(padding: PaddingValues, state: ManifestState) {
         item { StatusRow("Renderer", "Automatic") }
         item { StatusRow("Game directory", "Avero managed") }
         item { StatusRow("Package", "io.yannickfan.avero") }
+        item {
+            FeatureCard(
+                Icons.Rounded.AccountCircle,
+                "Independent third-party launcher",
+                "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT."
+            )
+        }
     }
 }
 
