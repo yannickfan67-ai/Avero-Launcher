@@ -160,6 +160,7 @@ class AndroidJavaRuntimeInstaller(
 
         val java = File(home, "bin/java")
         require(java.isFile) { "Runtime does not contain bin/java" }
+        require(java.canExecute()) { "Runtime bin/java is not executable" }
 
         val jvm = home.walkTopDown()
             .firstOrNull { it.isFile && it.name == "libjvm.so" }
