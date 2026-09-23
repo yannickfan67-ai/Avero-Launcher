@@ -80,8 +80,7 @@ class AndroidLaunchReadyPreparer(
         }
         val missingAsset = assetInstaller.parseIndex(assetIndex)
             .firstOrNull { asset ->
-                val file = layout.assetObject(asset.hash)
-                !file.isFile || file.length() != asset.size
+                !assetInstaller.isInstalled(asset, minecraftRoot)
             }
         require(missingAsset == null) {
             "Minecraft asset is missing or incomplete: ${missingAsset?.logicalName}"
