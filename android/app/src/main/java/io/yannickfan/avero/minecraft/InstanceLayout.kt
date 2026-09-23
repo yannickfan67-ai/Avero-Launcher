@@ -10,6 +10,7 @@ class InstanceLayout(private val root: File) {
     fun library(path: String) = File(root, "libraries/$path")
 
     fun assetIndex(id: String) = File(root, "assets/indexes/$id.json")
+    fun loggingConfig(fileId: String) = File(root, "log_configs/$fileId")
     fun assetObject(hash: String): File {
         require(hash.length >= 2)
         return File(root, "assets/objects/${hash.take(2)}/$hash")
