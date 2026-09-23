@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import io.yannickfan.avero.minecraft.AssetInstaller
 import io.yannickfan.avero.minecraft.GameInstaller
 import io.yannickfan.avero.minecraft.InstanceLayout
+import io.yannickfan.avero.minecraft.LaunchContext
 import io.yannickfan.avero.minecraft.LaunchPlanner
 import io.yannickfan.avero.minecraft.LauncherInstance
 import io.yannickfan.avero.minecraft.MinecraftManifestClient
@@ -64,6 +65,7 @@ import io.yannickfan.avero.minecraft.MinecraftVersionMetadata
 import io.yannickfan.avero.minecraft.RuntimeManager
 import io.yannickfan.avero.minecraft.VersionManifest
 import io.yannickfan.avero.ui.theme.AveroTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -110,6 +112,7 @@ fun AveroApp() {
                 val metadata = client.fetchVersion(latest)
                 ManifestState.Ready(manifest, metadata)
             } catch (t: Throwable) {
+                if (t is CancellationException) throw t
                 ManifestState.Failed(t.message ?: t::class.java.simpleName)
             }
         }
@@ -119,6 +122,7 @@ fun AveroApp() {
         val manifest = try {
             client.fetchManifest()
         } catch (t: Throwable) {
+                if (t is CancellationException) throw t
             manifestState = ManifestState.Failed(t.message ?: t::class.java.simpleName)
             return@LaunchedEffect
         }
@@ -128,6 +132,7 @@ fun AveroApp() {
                 ?: error("Latest release not present in manifest")
             ManifestState.Ready(manifest, client.fetchVersion(latest))
         } catch (t: Throwable) {
+                if (t is CancellationException) throw t
             ManifestState.Failed(t.message ?: t::class.java.simpleName)
         }
     }
@@ -184,16 +189,38 @@ private fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text(
-                "Minecraft: Java Edition on Android.",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Avero now reads Mojang's official version manifest and version metadata directly.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(Modifier.fillMaxWidth().padding(24.dp)) {
+                    Text(
+                        "AVERO / JAVA EDITION",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Minecraft Java,\nmade for Android.",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Native Compose UI with official Mojang metadata, verified downloads and a launch pipeline that resolves modern argument rules.",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HeroBadge("Native UI")
+                        HeroBadge("Verified files")
+                    }
+                }
+            }
         }
 
         item {
@@ -218,13 +245,15 @@ private fun HomeScreen(
                 is ManifestState.Ready -> {
                     val metadata = state.latestMetadata
                     val runtime = RuntimeManager().requirementFor(metadata)
+                    val instance = LauncherInstance(
+                        name = "Latest release",
+                        versionId = metadata.id,
+                        javaMajorVersion = metadata.javaMajorVersion
+                    )
                     val plan = LaunchPlanner().createVanillaPlan(
                         metadata = metadata,
-                        instance = LauncherInstance(
-                            name = "Latest release",
-                            versionId = metadata.id,
-                            javaMajorVersion = metadata.javaMajorVersion
-                        )
+                        instance = instance,
+                        context = LaunchContext.preview(metadata, instance)
                     )
 
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -290,6 +319,24 @@ private fun HomeScreen(
         item { StatusRow("Microsoft authentication", "next") }
         item { StatusRow("Android Java runtime install", "next") }
         item { StatusRow("Actual Java process launch", "next") }
+    }
+}
+
+@Composable
+private fun HeroBadge(text: String) {
+    Box(
+        Modifier
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant,
+                RoundedCornerShape(999.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -420,6 +467,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                                 installStatus =
                                     "Ready · ${result.downloadedFiles} core files + $assetCount assets"
                             } catch (t: Throwable) {
+                if (t is CancellationException) throw t
                                 installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
                             } finally {
                                 installing = false
