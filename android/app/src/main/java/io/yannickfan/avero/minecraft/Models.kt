@@ -21,9 +21,35 @@ data class DownloadSpec(
     val path: String? = null
 )
 
+enum class RuleAction {
+    ALLOW,
+    DISALLOW
+}
+
+data class OsRule(
+    val name: String? = null,
+    val versionRegex: String? = null,
+    val archRegex: String? = null
+)
+
+data class RuleSpec(
+    val action: RuleAction,
+    val os: OsRule? = null,
+    val features: Map<String, Boolean> = emptyMap()
+)
+
+data class ConditionalArgument(
+    val values: List<String>,
+    val rules: List<RuleSpec> = emptyList()
+)
+
 data class LibrarySpec(
     val name: String,
-    val artifact: DownloadSpec?
+    val artifact: DownloadSpec?,
+    val classifiers: Map<String, DownloadSpec> = emptyMap(),
+    val natives: Map<String, String> = emptyMap(),
+    val rules: List<RuleSpec> = emptyList(),
+    val extractExcludes: List<String> = emptyList()
 )
 
 data class MinecraftVersionMetadata(
@@ -35,8 +61,8 @@ data class MinecraftVersionMetadata(
     val assetIndexId: String,
     val assetIndex: DownloadSpec,
     val libraries: List<LibrarySpec>,
-    val gameArguments: List<String>,
-    val jvmArguments: List<String>
+    val gameArguments: List<ConditionalArgument>,
+    val jvmArguments: List<ConditionalArgument>
 )
 
 data class LauncherInstance(
@@ -51,11 +77,26 @@ enum class Loader {
     VANILLA, FABRIC, FORGE, NEOFORGE, QUILT
 }
 
+data class RuleContext(
+    val osName: String,
+    val osVersion: String = "",
+    val osArch: String,
+    val features: Map<String, Boolean> = emptyMap()
+)
+
 data class LaunchPlan(
     val versionId: String,
     val mainClass: String,
     val javaMajorVersion: Int,
     val classpathEntries: List<String>,
     val jvmArguments: List<String>,
-    val gameArguments: List<String>
+    val gameArguments: List<String>,
+    val nativeArchives: List<NativeArchivePlan> = emptyList()
+)
+
+data class NativeArchivePlan(
+    val libraryName: String,
+    val classifier: String,
+    val download: DownloadSpec,
+    val extractExcludes: List<String>
 )
