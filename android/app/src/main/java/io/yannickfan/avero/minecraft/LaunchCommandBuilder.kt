@@ -97,7 +97,7 @@ class LaunchCommandBuilder {
     private fun substitute(value: String, variables: Map<String, String>): String {
         var result = value
         for ((key, replacement) in variables) {
-            result = result.replace("${$key}", replacement)
+            result = result.replace("\${" + key + "}", replacement)
         }
 
         val unresolved = PLACEHOLDER.findAll(result).map { it.value }.toList()
