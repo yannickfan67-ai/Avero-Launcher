@@ -53,6 +53,15 @@ class AssetInstaller(
         }
     }
 
+    suspend fun isInstalled(
+        asset: AssetObjectSpec,
+        root: File
+    ): Boolean =
+        downloader.isValid(
+            asset.downloadSpec,
+            InstanceLayout(root).assetObject(asset.hash)
+        )
+
     suspend fun install(
         indexFile: File,
         root: File,
