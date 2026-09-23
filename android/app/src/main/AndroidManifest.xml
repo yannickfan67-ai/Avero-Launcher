@@ -8,6 +8,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Avero">
         <activity
+            android:name=".runtime.JvmProbeActivity"
+            android:exported="false"
+            android:process=":jvmprobe" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
