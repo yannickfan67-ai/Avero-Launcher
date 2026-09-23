@@ -54,7 +54,7 @@ object AndroidNativeProviderCatalog {
             components = listOf(
                 Artifact("jsr305.jar", 19_936, "59222d9ca5e5654f5dcf6680783d0e265baa848f"),
                 Artifact("lwjgl-3.3.3-merged-modules.jar", 1_081_868, "37518cb2c1cd9b298bd4165e2b9d18b414ff4196"),
-                Artifact("lwjgl-freetype.jar", 451_815, "28cb82b13145430fd7e281b79d20b9db18"),
+                Artifact("lwjgl-freetype.jar", 451_815, "28cb82b13145430fd7e8fe27e281b79d20b9db18"),
                 Artifact("lwjgl-lwjglx.jar", 237_225, "5e048e788112f09975ee0469220a1c6201856d58"),
                 Artifact("lwjgl-nanovg.jar", 126_928, "79374dcd85c5580831507cd02bf5be93701ebc8e"),
                 Artifact("lwjgl-openal.jar", 109_538, "1738288135d83676ce92dbe1633c53e323da312e"),
