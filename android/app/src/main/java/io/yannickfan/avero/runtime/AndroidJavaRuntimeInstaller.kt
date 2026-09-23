@@ -110,7 +110,12 @@ class AndroidJavaRuntimeInstaller(
             }
 
             val installed = requireValid(runtimePackage, runtimeHome)
-            installed.javaExecutable.setExecutable(true, false)
+            check(
+                installed.javaExecutable.canExecute() ||
+                    installed.javaExecutable.setExecutable(true, false)
+            ) {
+                "Installed Java executable is not executable: ${installed.javaExecutable}"
+            }
 
             onProgress(
                 RuntimeInstallProgress(
@@ -129,7 +134,9 @@ class AndroidJavaRuntimeInstaller(
         runtimePackage: AndroidJavaRuntimePackage,
         runtimeHome: File
     ): InstalledJavaRuntime? =
-        runCatching { requireValid(runtimePackage, runtimeHome) }.getOrNull()
+        runCatching { requireValid(runtimePackage, runtimeHome) }
+            .getOrNull()
+            ?.takeIf { it.javaExecutable.canExecute() }
 
     private fun requireValid(
         runtimePackage: AndroidJavaRuntimePackage,
