@@ -8,6 +8,7 @@ val averoMicrosoftClientId = System.getenv("AVERO_MS_CLIENT_ID") ?: ""
 android {
     namespace = "io.yannickfan.avero"
     compileSdk = 37
+    ndkVersion = "29.0.14206865"
 
     defaultConfig {
         applicationId = "io.yannickfan.avero"
@@ -34,6 +35,12 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 }
 
