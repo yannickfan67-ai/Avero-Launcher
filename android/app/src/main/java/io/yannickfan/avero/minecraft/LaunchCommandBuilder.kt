@@ -8,7 +8,8 @@ data class LaunchIdentity(
     val accessToken: String,
     val userType: String = "msa",
     val xuid: String = "",
-    val clientId: String = ""
+    val clientId: String = "",
+    val userProperties: String = "{}"
 )
 
 data class LaunchEnvironment(
@@ -66,6 +67,7 @@ class LaunchCommandBuilder {
             "clientid" to identity.clientId,
             "auth_xuid" to identity.xuid,
             "user_type" to identity.userType,
+            "user_properties" to identity.userProperties,
             "version_type" to environment.versionType,
             "natives_directory" to environment.nativesDirectory.absolutePath,
             "launcher_name" to environment.launcherName,
