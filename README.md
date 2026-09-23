@@ -24,7 +24,7 @@ It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. 
 
 ## Current state
 
-The repository currently contains the native Android launcher shell, official Mojang metadata parsing, verified game-file downloading, asset installation and CI APK builds. Java runtime installation, Microsoft authentication, native rendering support and the final launch process are still under active development.
+The repository now contains the native Android launcher shell, official Mojang metadata parsing, verified game-file and asset downloads, library/argument rule evaluation, native-classifier metadata handling, launcher placeholder expansion, and unit-tested CI APK builds. Java runtime installation, Microsoft authentication, an Android-native library provider, and the final Java process bridge are still under active development.
 
 The Android source lives in [`android/`](android/).
 
