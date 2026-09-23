@@ -126,10 +126,11 @@ class FileDownloader(
 
             val contentRange = parseContentRange(connection.getHeaderField("Content-Range"))
             val append = offset > 0 && code == HttpURLConnection.HTTP_PARTIAL
-            if (append && contentRange?.start != null && contentRange.start != offset) {
+            if (append && contentRange?.start != offset) {
                 temp.delete()
                 throw RestartDownloadException(
-                    "Server resumed from ${contentRange.start}, expected $offset"
+                    "Invalid Content-Range for resume: expected start $offset, got " +
+                        (contentRange?.start?.toString() ?: "missing")
                 )
             }
 
