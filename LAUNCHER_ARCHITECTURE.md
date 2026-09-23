@@ -84,13 +84,13 @@ Desktop launchers cannot simply be copied to Android. Avero needs explicit handl
 
 ## Current milestone
 
-The native Compose launcher shell and CI build are established.
+The native Compose shell, Mojang metadata client, verified core/asset downloads, instance layout, runtime requirement detection, and rule-aware launch-plan generation are established.
 
 Next implementation milestone:
 
-1. Account model and authentication interfaces
-2. Mojang version-manifest client
-3. Instance model
-4. Download manager
-5. Java runtime manager
-6. First vanilla launch experiment
+1. Preserve library rules, classifiers and native metadata.
+2. Prepare Android-compatible native libraries for the selected runtime.
+3. Add Microsoft authentication and profile/entitlement handling.
+4. Install/import a compatible Android Java runtime.
+5. Bridge the validated launch plan into the Java process and stream logs.
+6. Add loader normalization for Fabric first, then Forge/NeoForge/Quilt.
