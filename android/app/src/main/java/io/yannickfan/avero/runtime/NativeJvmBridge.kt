@@ -70,6 +70,14 @@ class NativeJvmBridge {
             "JAVA_HOME" to runtime.home.absolutePath,
             "HOME" to environment.homeDirectory.absolutePath,
             "TMPDIR" to environment.tempDirectory.absolutePath,
+            "PATH" to buildString {
+                append(File(runtime.home, "bin").absolutePath)
+                val inherited = System.getenv("PATH")
+                if (!inherited.isNullOrBlank()) {
+                    append(File.pathSeparator)
+                    append(inherited)
+                }
+            },
             "LD_LIBRARY_PATH" to libraryDirectories.joinToString(File.pathSeparator) {
                 it.absolutePath
             }

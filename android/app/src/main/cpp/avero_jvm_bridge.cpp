@@ -25,6 +25,7 @@ void* gProviderHandle = nullptr;
 ProviderSetupWindow gProviderSetupWindow = nullptr;
 ProviderReleaseWindow gProviderReleaseWindow = nullptr;
 bool gProviderArtInitialized = false;
+bool gProviderWindowAttached = false;
 
 using JliLaunch = jint (*)(
     int argc,
@@ -310,6 +311,19 @@ Java_io_yannickfan_avero_game_AndroidLwjglBridge_nativePrepare(
     setenv("AMETHYST_RENDERER", "opengles_system_gles", 1);
     setenv("LIBGL_ES", "3", 1);
 
+    ANativeWindow* providerWindow = ANativeWindow_fromSurface(env, surface);
+    if (providerWindow == nullptr) {
+        throwIllegalState(env, "Could not inspect Android LWJGL Surface");
+        return;
+    }
+    const std::string surfaceWidth =
+        std::to_string(ANativeWindow_getWidth(providerWindow));
+    const std::string surfaceHeight =
+        std::to_string(ANativeWindow_getHeight(providerWindow));
+    setenv("AWTSTUB_WIDTH", surfaceWidth.c_str(), 1);
+    setenv("AWTSTUB_HEIGHT", surfaceHeight.c_str(), 1);
+    ANativeWindow_release(providerWindow);
+
     const std::vector<std::string> preload =
         toStringVector(env, preloadLibraries);
     for (const std::string& path : preload) {
@@ -403,8 +417,15 @@ Java_io_yannickfan_avero_game_AndroidLwjglBridge_nativePrepare(
         return;
     }
 
+    if (gProviderWindowAttached && gProviderReleaseWindow != nullptr) {
+        gProviderReleaseWindow(env, nullptr);
+        gProviderWindowAttached = false;
+        if (env->ExceptionCheck()) return;
+    }
+
     gProviderSetupWindow(env, nullptr, surface);
     if (!env->ExceptionCheck()) {
+        gProviderWindowAttached = true;
         __android_log_print(
             ANDROID_LOG_INFO,
             kLogTag,
@@ -420,7 +441,12 @@ Java_io_yannickfan_avero_game_AndroidLwjglBridge_nativeRelease(
     jobject /* thiz */
 ) {
     std::lock_guard<std::mutex> lock(gProviderMutex);
-    if (gProviderHandle != nullptr && gProviderReleaseWindow != nullptr) {
+    if (
+        gProviderWindowAttached &&
+        gProviderHandle != nullptr &&
+        gProviderReleaseWindow != nullptr
+    ) {
         gProviderReleaseWindow(env, nullptr);
+        gProviderWindowAttached = false;
     }
 }
