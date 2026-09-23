@@ -137,11 +137,8 @@ class MinecraftManifestClient(
             val arguments = root.optJSONObject("arguments")
             val gameArguments = parseArguments(arguments?.optJSONArray("game"))
                 .ifEmpty {
-                    root.optString("minecraftArguments")
-                        .takeIf { it.isNotBlank() }
-                        ?.split(' ')
-                        ?.map { ConditionalArgument(listOf(it)) }
-                        .orEmpty()
+                    tokenizeLegacyArguments(root.optString("minecraftArguments"))
+                        .map { ConditionalArgument(listOf(it)) }
                 }
             val jvmArguments = parseArguments(arguments?.optJSONArray("jvm"))
 
@@ -192,6 +189,41 @@ class MinecraftManifestClient(
                     }
                 }
             }
+        }
+
+        internal fun tokenizeLegacyArguments(raw: String): List<String> {
+            if (raw.isBlank()) return emptyList()
+
+            val tokens = mutableListOf<String>()
+            val current = StringBuilder()
+            var quote: Char? = null
+            var escaped = false
+
+            fun flush() {
+                if (current.isNotEmpty()) {
+                    tokens += current.toString()
+                    current.setLength(0)
+                }
+            }
+
+            raw.forEach { ch ->
+                when {
+                    escaped -> {
+                        current.append(ch)
+                        escaped = false
+                    }
+                    ch == '\\' -> escaped = true
+                    quote != null && ch == quote -> quote = null
+                    quote == null && (ch == '"' || ch == '\'') -> quote = ch
+                    quote == null && ch.isWhitespace() -> flush()
+                    else -> current.append(ch)
+                }
+            }
+
+            if (escaped) current.append('\\')
+            require(quote == null) { "Unterminated quote in legacy minecraftArguments" }
+            flush()
+            return tokens
         }
 
         private fun parseRules(array: JSONArray?): List<RuleSpec> {
