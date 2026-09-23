@@ -6,6 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LaunchPlannerTest {
+    private fun variable(name: String): String =
+        36.toChar().toString() + "{" + name + "}"
+
     @Test
     fun nativeMetadataWithoutAndroidProviderIsBlocked() {
         val plan = LaunchPlanner().createVanillaPlan(
@@ -106,7 +109,7 @@ class LaunchPlannerTest {
                 path = "org/lwjgl/lwjgl/3.3.3/lwjgl-natives-linux-arm64.jar"
             )
         ),
-        natives = mapOf("linux" to "natives-linux-${D}{arch}")
+        natives = mapOf("linux" to "natives-linux-" + variable("arch"))
     )
 
     private fun instance() = LauncherInstance(
