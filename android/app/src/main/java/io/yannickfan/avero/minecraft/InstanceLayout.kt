@@ -36,6 +36,12 @@ class InstanceLayout(private val root: File) {
         )
     }
 
-    private fun sanitize(value: String): String =
-        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    private fun sanitize(value: String): String {
+        val sanitized = value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        return if (sanitized.isBlank() || sanitized == "." || sanitized == "..") {
+            "_"
+        } else {
+            sanitized
+        }
+    }
 }
