@@ -61,6 +61,9 @@ import io.yannickfan.avero.androidnative.AndroidNativeProviderInstaller
 import io.yannickfan.avero.auth.AuthenticatedMinecraftAccount
 import io.yannickfan.avero.auth.DeviceCodeInfo
 import io.yannickfan.avero.auth.MicrosoftMinecraftAuthClient
+import io.yannickfan.avero.game.GameLaunchActivity
+import io.yannickfan.avero.game.GameLaunchRequest
+import io.yannickfan.avero.game.GameLaunchRequestStore
 import io.yannickfan.avero.minecraft.AssetInstaller
 import io.yannickfan.avero.minecraft.GameInstaller
 import io.yannickfan.avero.minecraft.InstanceLayout
@@ -77,7 +80,9 @@ import io.yannickfan.avero.runtime.JvmProbeActivity
 import io.yannickfan.avero.runtime.RuntimeArch
 import io.yannickfan.avero.ui.theme.AveroTheme
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -252,6 +257,8 @@ private fun HomeScreen(
     navigate: (Int) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var launchStatus by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
@@ -318,11 +325,23 @@ private fun HomeScreen(
                         metadata = metadata,
                         runtimeRoot = File(context.filesDir, "runtimes")
                     )
-                    val nativeProviderPlan = RuntimeArch.current()
+                    val minecraftRoot = File(context.filesDir, "minecraft")
+                    val currentArch = RuntimeArch.current()
+                    val nativeProviderPackage = currentArch
                         ?.let { arch ->
                             AndroidNativeProviderCatalog.detect(metadata, arch)
                         }
+                    val nativeProviderPlan = nativeProviderPackage
                         ?.let(AndroidNativeProviderCatalog::plan)
+                    val nativeProviderInstalled = nativeProviderPackage?.let { pkg ->
+                        AndroidNativeProviderInstaller().findInstalled(
+                            pkg = pkg,
+                            providerRoot = File(
+                                minecraftRoot,
+                                "android-native/${pkg.id}"
+                            )
+                        )
+                    }
                     val plan = LaunchPlanner().createVanillaPlan(
                         metadata = metadata,
                         instance = LauncherInstance(
@@ -332,6 +351,25 @@ private fun HomeScreen(
                         ),
                         androidNativeProvider = nativeProviderPlan
                     )
+
+                    val layout = InstanceLayout(minecraftRoot)
+                    val coreFilesReady =
+                        layout.versionJson(metadata.id).isFile &&
+                            layout.clientJar(metadata.id).isFile &&
+                            layout.assetIndex(metadata.assetIndexId).isFile &&
+                            (metadata.logging == null ||
+                                layout.loggingConfig(metadata.logging.fileId).isFile)
+                    val classpathReady = plan.classpathEntries.all { entry ->
+                        File(minecraftRoot, entry).isFile
+                    }
+                    val signedInAccount =
+                        (accountState as? AccountState.SignedIn)?.account
+                    val launchReady =
+                        signedInAccount?.entitlements?.hasAnyEntitlement == true &&
+                            runtime.state == RuntimeState.AVAILABLE &&
+                            nativeProviderInstalled != null &&
+                            coreFilesReady &&
+                            classpathReady
 
                     Card(
                         shape = RoundedCornerShape(24.dp),
@@ -370,6 +408,68 @@ private fun HomeScreen(
                                     Text("Versions")
                                 }
                             }
+                            Spacer(Modifier.height(10.dp))
+                            Button(
+                                enabled = launchReady,
+                                onClick = {
+                                    val account = signedInAccount ?: return@Button
+                                    scope.launch {
+                                        launchStatus = "Creating one-time launch request…"
+                                        try {
+                                            val requestId = withContext(Dispatchers.IO) {
+                                                val request = GameLaunchRequest.create(
+                                                    versionId = metadata.id,
+                                                    playerName = account.profile.name,
+                                                    playerUuid = account.profile.id,
+                                                    minecraftAccessToken =
+                                                        account.minecraftAccessToken,
+                                                    memoryMb = 4096
+                                                )
+                                                GameLaunchRequestStore(
+                                                    context.filesDir
+                                                ).write(request)
+                                            }
+                                            launchStatus = null
+                                            context.startActivity(
+                                                Intent(
+                                                    context,
+                                                    GameLaunchActivity::class.java
+                                                ).putExtra(
+                                                    GameLaunchActivity.EXTRA_REQUEST_ID,
+                                                    requestId
+                                                )
+                                            )
+                                        } catch (t: Throwable) {
+                                            t.rethrowIfCancellation()
+                                            launchStatus =
+                                                "Launch handoff failed: " +
+                                                    (t.message
+                                                        ?: t::class.java.simpleName)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, null)
+                                Text(" Enter game process")
+                            }
+                            Text(
+                                launchStatus ?: when {
+                                    signedInAccount == null ->
+                                        "Sign in with Microsoft to launch."
+                                    !signedInAccount.entitlements.hasAnyEntitlement ->
+                                        "Minecraft entitlement is required."
+                                    runtime.state != RuntimeState.AVAILABLE ->
+                                        "Install the required Java runtime."
+                                    nativeProviderInstalled == null ->
+                                        "Install the Android LWJGL provider."
+                                    !coreFilesReady || !classpathReady ->
+                                        "Install/repair the game files first."
+                                    else ->
+                                        "Ready for isolated game-process validation."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
