@@ -110,7 +110,7 @@ class LaunchPlannerTest {
 
         assertTrue(
             plan.classpathEntries.contains(
-                "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
+                "libraries/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
             )
         )
         assertTrue(plan.classpathEntries.none { it.contains("natives-linux") })
