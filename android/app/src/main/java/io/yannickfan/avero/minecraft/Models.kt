@@ -92,6 +92,16 @@ data class RuleContext(
     val features: Map<String, Boolean> = emptyMap()
 )
 
+enum class NativePlanState {
+    NOT_REQUIRED,
+    READY,
+    MISSING_ANDROID_PROVIDER,
+    MISSING_COMPATIBLE_ARCHIVES;
+
+    val isLaunchable: Boolean
+        get() = this == NOT_REQUIRED || this == READY
+}
+
 data class LaunchPlan(
     val versionId: String,
     val mainClass: String,
@@ -100,6 +110,8 @@ data class LaunchPlan(
     val jvmArguments: List<String>,
     val gameArguments: List<String>,
     val nativeArchives: List<NativeArchivePlan> = emptyList(),
+    val nativeState: NativePlanState = NativePlanState.NOT_REQUIRED,
+    val nativeProviderId: String? = null,
     val logging: LoggingSpec? = null
 )
 
