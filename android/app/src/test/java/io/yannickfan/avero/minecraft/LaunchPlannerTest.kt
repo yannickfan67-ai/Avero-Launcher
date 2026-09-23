@@ -86,7 +86,7 @@ class LaunchPlannerTest {
                 LibrarySpec(
                     name = "org.lwjgl:lwjgl:3.3.3",
                     artifact = dummy.copy(
-                        path = "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
+                        path = "libraries/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
                     )
                 ),
                 LibrarySpec(
