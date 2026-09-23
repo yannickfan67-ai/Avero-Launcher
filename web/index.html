@@ -4,20 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0d12" />
-  <meta name="description" content="Avero — a fresh Android-first workspace for projects, code and future AI tooling." />
-  <title>Avero — Android-first workspace</title>
+  <meta name="description" content="Avero Launcher — Minecraft: Java Edition launcher for Android." />
+  <title>Avero Launcher — Minecraft Java on Android</title>
   <link rel="icon" href="logo.svg" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="nav shell">
-    <a class="brand" href="#top" aria-label="Avero home">
+    <a class="brand" href="#top" aria-label="Avero Launcher home">
       <img src="logo.svg" alt="" />
-      <span>Avero</span>
+      <span>Avero Launcher</span>
     </a>
     <nav>
-      <a href="#product">Product</a>
-      <a href="#principles">Principles</a>
+      <a href="#features">Features</a>
+      <a href="#loaders">Loaders</a>
       <a href="#android">Android</a>
     </nav>
     <button id="themeToggle" class="icon-button" aria-label="Toggle theme">◐</button>
@@ -26,70 +26,71 @@
   <main id="top">
     <section class="hero shell">
       <div class="hero-copy">
-        <p class="eyebrow">A NEW ANDROID CODEBASE</p>
-        <h1>Drop the old prefix.<br><span>Build mobile properly.</span></h1>
-        <p class="lede">Avero is a fresh Android-first workspace for projects, repository browsing and coding tools — native UI, adaptive layouts, and no desktop code dragged along for the ride.</p>
+        <p class="eyebrow">MINECRAFT JAVA · ANDROID</p>
+        <h1>Your worlds.<br><span>Your mods. Your phone.</span></h1>
+        <p class="lede">Avero is a native Android launcher for Minecraft: Java Edition, built for account login, version management, Java runtimes, mod loaders and practical mobile launch controls.</p>
         <div class="actions">
-          <a class="button primary" href="#android">See Android build</a>
-          <a class="button secondary" href="#product">Explore the concept</a>
+          <a class="button primary" href="#android">Android build</a>
+          <a class="button secondary" href="#features">Explore features</a>
         </div>
         <div class="meta">
-          <span>Native Kotlin</span><span>Jetpack Compose</span><span>Android 17 ready</span>
+          <span>Native Kotlin</span><span>Java Edition</span><span>Fabric / Forge / NeoForge / Quilt</span>
         </div>
       </div>
 
-      <div class="phone-wrap" aria-label="Avero Android preview">
+      <div class="phone-wrap" aria-label="Avero Launcher Android preview">
         <div class="phone">
           <div class="phone-bar"><span class="mini-logo">A</span><strong>Avero</strong><span>⋯</span></div>
           <div class="phone-content">
-            <small>MOBILE WORKSPACE</small>
-            <h2>Everything you need,<br>without the desktop baggage.</h2>
-            <div class="mobile-grid">
-              <div class="mobile-card"><b>Projects</b><span>Browse local work</span></div>
-              <div class="mobile-card"><b>Workspace</b><span>Draft & inspect</span></div>
+            <small>SELECTED INSTANCE</small>
+            <h2>Minecraft 1.21.4</h2>
+            <div class="mc-card">
+              <b>Fabric</b>
+              <span>Java 21 · 4096 MB</span>
+              <button>▶ Play</button>
             </div>
-            <div class="mobile-list"><span>◫</span><div><b>Android sandbox</b><small>Kotlin · local</small></div></div>
-            <div class="mobile-list"><span>⌁</span><div><b>AI slot</b><small>Provider-neutral</small></div></div>
+            <div class="mobile-list"><span>♙</span><div><b>Microsoft account</b><small>Sign in and profile</small></div></div>
+            <div class="mobile-list"><span>⬡</span><div><b>Versions & loaders</b><small>Vanilla · Fabric · Forge</small></div></div>
           </div>
-          <div class="phone-nav"><b>⌂</b><span>▣</span><span>⌘</span><span>⚙</span></div>
+          <div class="phone-nav"><b>⌂</b><span>▣</span><span>⇩</span><span>⚙</span></div>
         </div>
       </div>
     </section>
 
-    <section id="product" class="section shell">
-      <p class="eyebrow">PRODUCT</p>
-      <div class="section-head"><h2>Small core. Clear expansion points.</h2><p>The first version establishes the surfaces we can later connect to Git, repositories, local tools and coding AI without locking the app to one service.</p></div>
+    <section id="features" class="section shell">
+      <p class="eyebrow">FEATURES</p>
+      <div class="section-head"><h2>A launcher first.</h2><p>No coding workspace detour. Avero is focused on getting Minecraft Java installed, configured and launched correctly on Android.</p></div>
       <div class="tiles">
-        <article class="tile wide"><span class="tile-id">01</span><h3>Projects</h3><p>A clean mobile project browser for local work, imported repositories and temporary scratch spaces.</p><div class="fake-row"><i></i><span>android-sandbox</span><em>Kotlin</em></div><div class="fake-row"><i></i><span>website</span><em>HTML</em></div></article>
-        <article class="tile"><span class="tile-id">02</span><h3>Workspace</h3><p>Code snippets, diffs, notes and repository context in a phone-friendly surface.</p></article>
-        <article class="tile"><span class="tile-id">03</span><h3>AI, later</h3><p>The UI reserves an AI layer, but the initial client does not hard-wire a provider or force cloud usage.</p></article>
+        <article class="tile wide"><span class="tile-id">01</span><h3>Version management</h3><p>Install and switch Minecraft versions, libraries, assets and game instances from a touch-first interface.</p><div class="fake-row"><i></i><span>Minecraft 1.21.4</span><em>Fabric</em></div><div class="fake-row"><i></i><span>Minecraft 1.8.9</span><em>Vanilla</em></div></article>
+        <article class="tile"><span class="tile-id">02</span><h3>Microsoft login</h3><p>Account authentication, Minecraft profile data and entitlement-aware launch flow.</p></article>
+        <article class="tile"><span class="tile-id">03</span><h3>Runtime control</h3><p>Java runtime, memory, JVM arguments, renderer options, logs and crash diagnostics.</p></article>
       </div>
     </section>
 
-    <section id="principles" class="section shell split">
-      <div><p class="eyebrow">PRINCIPLES</p><h2>Not a port.<br>Not a WebView.</h2></div>
+    <section id="loaders" class="section shell split">
+      <div><p class="eyebrow">MODDED</p><h2>Built for loaders,<br>not just vanilla.</h2></div>
       <div class="principles">
-        <div><b>Native first</b><p>Kotlin + Compose, designed around Android interaction patterns.</p></div>
-        <div><b>Independent</b><p>A separate package and codebase instead of a thin client for the PC app.</p></div>
-        <div><b>Adaptive</b><p>Phone, tablet, foldable and desktop-window layouts are treated as first-class targets.</p></div>
-        <div><b>Open-ended</b><p>Git, repo hosting, terminal bridges and AI can arrive as clean modules later.</p></div>
+        <div><b>Fabric</b><p>Modern lightweight mod-loader support.</p></div>
+        <div><b>Forge</b><p>Classic modded Minecraft compatibility.</p></div>
+        <div><b>NeoForge</b><p>Modern Forge-family loader support.</p></div>
+        <div><b>Quilt</b><p>Planned loader integration alongside Modrinth resources.</p></div>
       </div>
     </section>
 
     <section id="android" class="section shell download">
       <div>
-        <p class="eyebrow">ANDROID 0.1.0</p>
-        <h2>The foundation is here.</h2>
-        <p>Package <code>io.yannickfan.avero</code>. Minimum Android 8.0, targeting API 37 with a native Compose interface.</p>
+        <p class="eyebrow">ANDROID FOUNDATION</p>
+        <h2>The launcher UI now builds.</h2>
+        <p>Package <code>io.yannickfan.avero</code>. Native Compose UI, minimum Android 8.0, targeting API 37. Runtime and authentication implementation comes next.</p>
       </div>
       <div class="status-card">
         <span class="status-dot"></span>
-        <div><b>Source skeleton ready</b><small>App structure + website prototype</small></div>
+        <div><b>Android CI passing</b><small>Debug APK generated on GitHub Actions</small></div>
       </div>
     </section>
   </main>
 
-  <footer class="shell"><div class="brand"><img src="logo.svg" alt="" /><span>Avero</span></div><p>Fresh start. Android first.</p></footer>
+  <footer class="shell"><div class="brand"><img src="logo.svg" alt="" /><span>Avero Launcher</span></div><p>Minecraft Java. Android first.</p></footer>
   <script src="app.js"></script>
 </body>
 </html>
