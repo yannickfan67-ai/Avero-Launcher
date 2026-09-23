@@ -24,7 +24,8 @@ data class InstalledJavaRuntime(
     val packageInfo: AndroidJavaRuntimePackage,
     val home: File,
     val javaExecutable: File,
-    val jvmLibrary: File?
+    val jvmLibrary: File?,
+    val jliLibrary: File?
 )
 
 class AndroidJavaRuntimeInstaller(
@@ -96,7 +97,12 @@ class AndroidJavaRuntimeInstaller(
                     "Validating runtime layout"
                 )
             )
-            val staged = requireValid(runtimePackage, staging)
+            requireValid(runtimePackage, staging)
+
+            // Android 17+ requires dynamically loaded native code to be read-only.
+            staging.walkTopDown()
+                .filter { it.isFile }
+                .forEach { file -> file.setWritable(false, false) }
 
             if (runtimeHome.exists()) runtimeHome.deleteRecursively()
             check(staging.renameTo(runtimeHome)) {
@@ -136,12 +142,17 @@ class AndroidJavaRuntimeInstaller(
 
         val jvm = home.walkTopDown()
             .firstOrNull { it.isFile && it.name == "libjvm.so" }
+        val jli = home.walkTopDown()
+            .firstOrNull { it.isFile && it.name == "libjli.so" }
+
+        require(jli != null) { "Runtime does not contain libjli.so" }
 
         return InstalledJavaRuntime(
             packageInfo = runtimePackage,
             home = home,
             javaExecutable = java,
-            jvmLibrary = jvm
+            jvmLibrary = jvm,
+            jliLibrary = jli
         )
     }
 }
