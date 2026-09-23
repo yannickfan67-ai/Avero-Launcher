@@ -40,13 +40,15 @@ class AndroidJavaRuntimeInstaller(
         root.mkdirs()
         val runtimeHome = File(root, runtimePackage.id)
         findInstalled(runtimePackage, runtimeHome)?.let {
+            normalizeRuntimePermissions(runtimeHome)
+            val normalized = requireValid(runtimePackage, runtimeHome)
             onProgress(
                 RuntimeInstallProgress(
                     RuntimeInstallProgress.Stage.COMPLETE,
                     "Java ${runtimePackage.majorVersion} is already installed"
                 )
             )
-            return@withContext it
+            return@withContext normalized
         }
 
         val cacheDir = File(root, ".downloads").apply { mkdirs() }
@@ -100,9 +102,7 @@ class AndroidJavaRuntimeInstaller(
             requireValid(runtimePackage, staging)
 
             // Android 17+ requires dynamically loaded native code to be read-only.
-            staging.walkTopDown()
-                .filter { it.isFile }
-                .forEach { file -> file.setWritable(false, false) }
+            normalizeRuntimePermissions(staging)
 
             if (runtimeHome.exists()) runtimeHome.deleteRecursively()
             check(staging.renameTo(runtimeHome)) {
@@ -137,6 +137,20 @@ class AndroidJavaRuntimeInstaller(
         runCatching { requireValid(runtimePackage, runtimeHome) }
             .getOrNull()
             ?.takeIf { it.javaExecutable.canExecute() }
+
+    private fun normalizeRuntimePermissions(home: File) {
+        home.walkTopDown().forEach { file ->
+            when {
+                file.isDirectory -> file.setExecutable(true, false)
+                file.isFile -> {
+                    file.setWritable(false, false)
+                    if (file.parentFile?.name == "bin") {
+                        file.setExecutable(true, false)
+                    }
+                }
+            }
+        }
+    }
 
     private fun requireValid(
         runtimePackage: AndroidJavaRuntimePackage,
