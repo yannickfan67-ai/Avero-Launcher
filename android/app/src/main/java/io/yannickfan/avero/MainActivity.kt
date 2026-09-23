@@ -246,6 +246,8 @@ private fun HomeScreen(
     onRefresh: () -> Unit,
     navigate: (Int) -> Unit
 ) {
+    val context = LocalContext.current
+
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -285,7 +287,10 @@ private fun HomeScreen(
                 }
                 is ManifestState.Ready -> {
                     val metadata = state.latestMetadata
-                    val runtime = RuntimeManager().requirementFor(metadata)
+                    val runtime = RuntimeManager().requirementFor(
+                        metadata = metadata,
+                        runtimeRoot = File(context.filesDir, "runtimes")
+                    )
                     val plan = LaunchPlanner().createVanillaPlan(
                         metadata = metadata,
                         instance = LauncherInstance(
