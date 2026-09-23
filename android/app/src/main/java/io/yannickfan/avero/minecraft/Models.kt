@@ -19,7 +19,8 @@ data class DownloadSpec(
     val sha1: String?,
     val size: Long?,
     val path: String? = null,
-    val sha256: String? = null
+    val sha256: String? = null,
+    val gitBlobSha1: String? = null
 )
 
 enum class RuleAction {
