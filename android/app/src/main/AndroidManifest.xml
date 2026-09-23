@@ -8,6 +8,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Avero">
         <activity
+            android:name=".game.GameLaunchActivity"
+            android:exported="false"
+            android:process=":game" />
+
+        <activity
             android:name=".runtime.JvmProbeActivity"
             android:exported="false"
             android:process=":jvmprobe" />
