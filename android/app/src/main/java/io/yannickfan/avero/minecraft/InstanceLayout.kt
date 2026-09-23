@@ -7,7 +7,16 @@ class InstanceLayout(private val root: File) {
     fun versionJson(versionId: String) = File(versionDirectory(versionId), "$versionId.json")
     fun clientJar(versionId: String) = File(versionDirectory(versionId), "$versionId.jar")
 
-    fun library(path: String) = File(root, "libraries/$path")
+    fun library(path: String): File {
+        val normalized = path.replace('\\', '/').trimStart('/')
+        require(normalized.isNotBlank()) { "Library artifact path is empty" }
+        require(normalized.split('/').none { it == ".." }) {
+            "Library artifact path escapes the managed library directory: $path"
+        }
+        val relative = normalized.removePrefix("libraries/")
+        require(relative.isNotBlank()) { "Library artifact path is empty" }
+        return File(root, "libraries/$relative")
+    }
 
     fun assetIndex(id: String) = File(root, "assets/indexes/$id.json")
     fun loggingConfig(fileId: String) = File(root, "log_configs/$fileId")
