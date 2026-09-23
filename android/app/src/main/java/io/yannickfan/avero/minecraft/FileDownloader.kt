@@ -14,7 +14,14 @@ class FileDownloader {
             if (expected > 0 && file.length() != expected) return@withContext false
         }
         spec.sha1?.let { expected ->
-            if (!sha1(file).equals(expected, ignoreCase = true)) return@withContext false
+            if (!digest(file, "SHA-1").equals(expected, ignoreCase = true)) {
+                return@withContext false
+            }
+        }
+        spec.sha256?.let { expected ->
+            if (!digest(file, "SHA-256").equals(expected, ignoreCase = true)) {
+                return@withContext false
+            }
         }
         true
     }
@@ -31,6 +38,7 @@ class FileDownloader {
         val connection = (URL(spec.url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 60_000
+            instanceFollowRedirects = true
             setRequestProperty("User-Agent", "Avero-Launcher/0.1")
         }
 
@@ -53,16 +61,23 @@ class FileDownloader {
                 }
             }
 
-            spec.size?.let {
-                if (it > 0 && temp.length() != it) {
-                    error("Size mismatch: expected $it, got ${temp.length()}")
+            spec.size?.let { expected ->
+                if (expected > 0 && temp.length() != expected) {
+                    error("Size mismatch: expected $expected, got ${temp.length()}")
                 }
             }
 
             spec.sha1?.let { expected ->
-                val actual = sha1(temp)
+                val actual = digest(temp, "SHA-1")
                 if (!actual.equals(expected, ignoreCase = true)) {
                     error("SHA-1 mismatch: expected $expected, got $actual")
+                }
+            }
+
+            spec.sha256?.let { expected ->
+                val actual = digest(temp, "SHA-256")
+                if (!actual.equals(expected, ignoreCase = true)) {
+                    error("SHA-256 mismatch: expected $expected, got $actual")
                 }
             }
 
@@ -77,8 +92,8 @@ class FileDownloader {
         }
     }
 
-    private fun sha1(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-1")
+    private fun digest(file: File, algorithm: String): String {
+        val digest = MessageDigest.getInstance(algorithm)
         file.inputStream().use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE * 4)
             while (true) {
