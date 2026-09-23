@@ -16,6 +16,16 @@ constexpr const char* kLogTag = "AveroJVM";
 std::mutex gGameWindowMutex;
 ANativeWindow* gGameWindow = nullptr;
 
+using ProviderSetupWindow = void (*)(JNIEnv*, jclass, jobject);
+using ProviderReleaseWindow = void (*)(JNIEnv*, jclass);
+using ProviderJniOnLoad = jint (*)(JavaVM*, void*);
+
+std::mutex gProviderMutex;
+void* gProviderHandle = nullptr;
+ProviderSetupWindow gProviderSetupWindow = nullptr;
+ProviderReleaseWindow gProviderReleaseWindow = nullptr;
+bool gProviderArtInitialized = false;
+
 using JliLaunch = jint (*)(
     int argc,
     char** argv,
@@ -271,4 +281,146 @@ ANativeWindow* avero_acquire_game_window() {
         ANativeWindow_acquire(gGameWindow);
     }
     return gGameWindow;
+}
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_io_yannickfan_avero_game_AndroidLwjglBridge_nativePrepare(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jstring providerPathValue,
+    jstring nativeDirectoryValue,
+    jobjectArray preloadLibraries,
+    jobject surface
+) {
+    const std::string providerPath = toString(env, providerPathValue);
+    const std::string nativeDirectory = toString(env, nativeDirectoryValue);
+
+    if (providerPath.empty() || nativeDirectory.empty()) {
+        throwIllegalState(env, "Android LWJGL provider path is incomplete");
+        return;
+    }
+    if (surface == nullptr) {
+        throwIllegalState(env, "Android LWJGL provider requires a Surface");
+        return;
+    }
+
+    setenv("POJAV_NATIVEDIR", nativeDirectory.c_str(), 1);
+    setenv("AMETHYST_RENDERER", "opengles_system_gles", 1);
+    setenv("LIBGL_ES", "3", 1);
+
+    const std::vector<std::string> preload =
+        toStringVector(env, preloadLibraries);
+    for (const std::string& path : preload) {
+        if (path == providerPath) continue;
+        dlerror();
+        void* handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+        if (handle == nullptr) {
+            const char* error = dlerror();
+            __android_log_print(
+                ANDROID_LOG_WARN,
+                kLogTag,
+                "Optional provider preload failed for %s: %s",
+                path.c_str(),
+                error == nullptr ? "unknown error" : error
+            );
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(gProviderMutex);
+
+    if (gProviderHandle == nullptr) {
+        dlerror();
+        gProviderHandle = dlopen(
+            providerPath.c_str(),
+            RTLD_NOW | RTLD_GLOBAL
+        );
+        if (gProviderHandle == nullptr) {
+            const char* error = dlerror();
+            const std::string message =
+                std::string("Failed to load Android LWJGL bridge: ") +
+                (error == nullptr ? "unknown error" : error);
+            throwIllegalState(env, message);
+            return;
+        }
+    }
+
+    if (!gProviderArtInitialized) {
+        auto onLoad = reinterpret_cast<ProviderJniOnLoad>(
+            dlsym(gProviderHandle, "JNI_OnLoad")
+        );
+        if (onLoad == nullptr) {
+            throwIllegalState(
+                env,
+                "Android LWJGL bridge does not export JNI_OnLoad"
+            );
+            return;
+        }
+
+        JavaVM* artVm = nullptr;
+        if (env->GetJavaVM(&artVm) != JNI_OK || artVm == nullptr) {
+            throwIllegalState(env, "Could not obtain Android JavaVM");
+            return;
+        }
+
+        const jint version = onLoad(artVm, nullptr);
+        if (env->ExceptionCheck()) {
+            return;
+        }
+        if (version < JNI_VERSION_1_4) {
+            throwIllegalState(
+                env,
+                "Android LWJGL bridge rejected the Android JavaVM"
+            );
+            return;
+        }
+        gProviderArtInitialized = true;
+    }
+
+    if (gProviderSetupWindow == nullptr) {
+        gProviderSetupWindow = reinterpret_cast<ProviderSetupWindow>(
+            dlsym(
+                gProviderHandle,
+                "Java_net_kdt_pojavlaunch_utils_JREUtils_setupBridgeWindow"
+            )
+        );
+    }
+    if (gProviderReleaseWindow == nullptr) {
+        gProviderReleaseWindow = reinterpret_cast<ProviderReleaseWindow>(
+            dlsym(
+                gProviderHandle,
+                "Java_net_kdt_pojavlaunch_utils_JREUtils_releaseBridgeWindow"
+            )
+        );
+    }
+
+    if (gProviderSetupWindow == nullptr) {
+        throwIllegalState(
+            env,
+            "Android LWJGL bridge has no setupBridgeWindow entry"
+        );
+        return;
+    }
+
+    gProviderSetupWindow(env, nullptr, surface);
+    if (!env->ExceptionCheck()) {
+        __android_log_print(
+            ANDROID_LOG_INFO,
+            kLogTag,
+            "Android LWJGL bridge attached to game Surface"
+        );
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_io_yannickfan_avero_game_AndroidLwjglBridge_nativeRelease(
+    JNIEnv* env,
+    jobject /* thiz */
+) {
+    std::lock_guard<std::mutex> lock(gProviderMutex);
+    if (gProviderHandle != nullptr && gProviderReleaseWindow != nullptr) {
+        gProviderReleaseWindow(env, nullptr);
+    }
 }

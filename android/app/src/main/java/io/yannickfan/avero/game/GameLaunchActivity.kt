@@ -1,6 +1,7 @@
 package io.yannickfan.avero.game
 
 import android.os.Bundle
+import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.ComponentActivity
@@ -18,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.yannickfan.avero.minecraft.LaunchCommandBuilder
@@ -54,7 +56,8 @@ private data class ResolvedGameLaunch(
     val versionId: String,
     val javaMajor: Int,
     val classpathEntries: Int,
-    val playerName: String
+    val playerName: String,
+    val providerNativeDirectory: String
 )
 
 @Composable
@@ -62,9 +65,15 @@ private fun GameLaunchScreen(
     requestId: String?,
     filesRoot: File
 ) {
+    val context = LocalContext.current
     var status by remember { mutableStateOf("Validating one-time launch request…") }
     var resolved by remember { mutableStateOf<ResolvedGameLaunch?>(null) }
     var surfaceReady by remember { mutableStateOf(false) }
+    var currentSurface by remember { mutableStateOf<Surface?>(null) }
+
+    LaunchedEffect(Unit) {
+        org.lwjgl.glfw.CallbackBridge.initialize(context)
+    }
 
     LaunchedEffect(requestId) {
         status = try {
@@ -114,7 +123,9 @@ private fun GameLaunchScreen(
                     versionId = metadata.id,
                     javaMajor = command.javaMajorVersion,
                     classpathEntries = ready.prepared.plan.classpathEntries.size,
-                    playerName = request.playerName
+                    playerName = request.playerName,
+                    providerNativeDirectory =
+                        ready.prepared.nativeProvider.nativeDirectory.absolutePath
                 )
             }
 
@@ -122,6 +133,22 @@ private fun GameLaunchScreen(
             "Launch context validated. Waiting for renderer bridge."
         } catch (t: Throwable) {
             "Launch preparation failed: ${safeError(t)}"
+        }
+    }
+
+    LaunchedEffect(resolved, currentSurface) {
+        val launch = resolved
+        val surface = currentSurface
+        if (launch != null && surface != null && surface.isValid) {
+            status = try {
+                AndroidLwjglBridge.prepare(
+                    nativeDirectory = File(launch.providerNativeDirectory),
+                    surface = surface
+                )
+                "Android LWJGL bridge ready. JVM launch is the next gate."
+            } catch (t: Throwable) {
+                "Renderer bridge failed: ${safeError(t)}"
+            }
         }
     }
 
@@ -158,6 +185,7 @@ private fun GameLaunchScreen(
                         object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
                                 GameSurfaceBridge.attach(holder.surface)
+                                currentSurface = holder.surface
                                 surfaceReady = true
                             }
 
@@ -172,7 +200,9 @@ private fun GameLaunchScreen(
                             }
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                AndroidLwjglBridge.release()
                                 GameSurfaceBridge.detach()
+                                currentSurface = null
                                 surfaceReady = false
                             }
                         }
