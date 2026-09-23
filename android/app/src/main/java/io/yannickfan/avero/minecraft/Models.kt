@@ -1,5 +1,7 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.androidnative.AndroidNativeProviderPlan
+
 data class MinecraftVersionSummary(
     val id: String,
     val type: String,
@@ -112,8 +114,8 @@ data class LaunchPlan(
     val gameArguments: List<String>,
     val nativeArchives: List<NativeArchivePlan> = emptyList(),
     val nativeState: NativePlanState = NativePlanState.NOT_REQUIRED,
-    val nativeProviderId: String? = null,
-    val logging: LoggingSpec? = null
+    val logging: LoggingSpec? = null,
+    val androidNativeProvider: AndroidNativeProviderPlan? = null
 )
 
 data class NativeArchivePlan(
