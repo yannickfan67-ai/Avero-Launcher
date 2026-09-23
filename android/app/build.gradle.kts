@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val averoMicrosoftClientId = System.getenv("AVERO_MS_CLIENT_ID") ?: ""
+
 android {
     namespace = "io.yannickfan.avero"
     compileSdk = 37
@@ -13,10 +15,16 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField(
+            "String",
+            "MICROSOFT_CLIENT_ID",
+            "\"" + averoMicrosoftClientId.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        )
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
