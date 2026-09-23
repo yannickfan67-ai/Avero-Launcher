@@ -24,9 +24,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.yannickfan.avero.minecraft.LaunchCommandBuilder
 import io.yannickfan.avero.minecraft.LaunchIdentity
+import io.yannickfan.avero.minecraft.ResolvedLaunchCommand
 import io.yannickfan.avero.minecraft.MinecraftManifestClient
+import io.yannickfan.avero.runtime.InstalledJavaRuntime
+import io.yannickfan.avero.runtime.JvmLaunchEnvironment
+import io.yannickfan.avero.runtime.NativeJvmBridge
 import io.yannickfan.avero.runtime.RuntimeArch
 import io.yannickfan.avero.ui.theme.AveroTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -57,7 +62,10 @@ private data class ResolvedGameLaunch(
     val javaMajor: Int,
     val classpathEntries: Int,
     val playerName: String,
-    val providerNativeDirectory: String
+    val providerNativeDirectory: String,
+    val runtime: InstalledJavaRuntime,
+    val command: ResolvedLaunchCommand,
+    val jvmEnvironment: JvmLaunchEnvironment
 )
 
 @Composable
@@ -70,6 +78,7 @@ private fun GameLaunchScreen(
     var resolved by remember { mutableStateOf<ResolvedGameLaunch?>(null) }
     var surfaceReady by remember { mutableStateOf(false) }
     var currentSurface by remember { mutableStateOf<Surface?>(null) }
+    var launchStarted by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         org.lwjgl.glfw.CallbackBridge.initialize(context)
@@ -119,13 +128,31 @@ private fun GameLaunchScreen(
                     environment = ready.prepared.environment
                 )
 
+                val instanceRoot = requireNotNull(
+                    ready.prepared.environment.gameDirectory.parentFile
+                ) {
+                    "Game directory has no instance root"
+                }
+                val jvmEnvironment = JvmLaunchEnvironment(
+                    javaHome = ready.runtime.home,
+                    gameDirectory = ready.prepared.environment.gameDirectory,
+                    tempDirectory = File(instanceRoot, "tmp"),
+                    homeDirectory = instanceRoot,
+                    extraLibraryDirectories = listOf(
+                        ready.prepared.nativeProvider.nativeDirectory
+                    )
+                )
+
                 ResolvedGameLaunch(
                     versionId = metadata.id,
                     javaMajor = command.javaMajorVersion,
                     classpathEntries = ready.prepared.plan.classpathEntries.size,
                     playerName = request.playerName,
                     providerNativeDirectory =
-                        ready.prepared.nativeProvider.nativeDirectory.absolutePath
+                        ready.prepared.nativeProvider.nativeDirectory.absolutePath,
+                    runtime = ready.runtime,
+                    command = command,
+                    jvmEnvironment = jvmEnvironment
                 )
             }
 
@@ -139,15 +166,32 @@ private fun GameLaunchScreen(
     LaunchedEffect(resolved, currentSurface) {
         val launch = resolved
         val surface = currentSurface
-        if (launch != null && surface != null && surface.isValid) {
+        if (
+            launch != null &&
+            surface != null &&
+            surface.isValid &&
+            !launchStarted
+        ) {
             status = try {
                 AndroidLwjglBridge.prepare(
                     nativeDirectory = File(launch.providerNativeDirectory),
                     surface = surface
                 )
-                "Android LWJGL bridge ready. JVM launch is the next gate."
+
+                // One launch request may create exactly one OpenJDK VM. Surface
+                // recreation must never start a second Minecraft process.
+                launchStarted = true
+                status = "Android LWJGL bridge ready. Launching Minecraft JVM…"
+
+                val exitCode = NativeJvmBridge().launch(
+                    runtime = launch.runtime,
+                    command = launch.command,
+                    environment = launch.jvmEnvironment
+                )
+                "Minecraft JVM exited with code $exitCode"
             } catch (t: Throwable) {
-                "Renderer bridge failed: ${safeError(t)}"
+                if (t is CancellationException) throw t
+                "Game JVM launch failed: ${safeError(t)}"
             }
         }
     }
