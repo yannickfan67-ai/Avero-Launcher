@@ -47,6 +47,14 @@ AVERO_MS_CLIENT_ID="<application-client-id>" gradle assembleDebug
 
 GitHub Actions can provide the same non-secret client ID through the `AVERO_MS_CLIENT_ID` environment variable. Builds without it still compile, but the Accounts page will show that Microsoft login is not configured.
 
+## Android Java runtime
+
+Avero can install Android OpenJDK runtime packages for Java 8, 17, 21 and 25 (depending on device ABI and upstream availability). Runtime archives are downloaded separately, verified with published SHA-256 digests, and extracted into Avero's private runtime directory.
+
+The runtime binaries are **not MIT-licensed Avero code**. See [`THIRD_PARTY.md`](THIRD_PARTY.md) for upstream and license information.
+
+The runtime installer does not by itself make Minecraft render on Android: the remaining launch milestone requires the Android JVM/native launch bridge and the LWJGL/renderer compatibility layer.
+
 ## Planned architecture
 
 See [`LAUNCHER_ARCHITECTURE.md`](LAUNCHER_ARCHITECTURE.md).
