@@ -69,6 +69,7 @@ import io.yannickfan.avero.minecraft.MinecraftVersionMetadata
 import io.yannickfan.avero.minecraft.RuntimeManager
 import io.yannickfan.avero.minecraft.VersionManifest
 import io.yannickfan.avero.ui.theme.AveroTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -141,6 +142,7 @@ fun AveroApp() {
                 accountState = AccountState.Completing
                 AccountState.SignedIn(auth.authenticateMinecraft(microsoftToken))
             } catch (t: Throwable) {
+                if (t is CancellationException) throw t
                 AccountState.Failed(t.message ?: t::class.java.simpleName)
             }
         }
@@ -156,6 +158,7 @@ fun AveroApp() {
                 val metadata = client.fetchVersion(latest)
                 ManifestState.Ready(manifest, metadata)
             } catch (t: Throwable) {
+                if (t is CancellationException) throw t
                 ManifestState.Failed(t.message ?: t::class.java.simpleName)
             }
         }
@@ -165,6 +168,7 @@ fun AveroApp() {
         val manifest = try {
             client.fetchManifest()
         } catch (t: Throwable) {
+                if (t is CancellationException) throw t
             manifestState = ManifestState.Failed(t.message ?: t::class.java.simpleName)
             return@LaunchedEffect
         }
@@ -174,6 +178,7 @@ fun AveroApp() {
                 ?: error("Latest release not present in manifest")
             ManifestState.Ready(manifest, client.fetchVersion(latest))
         } catch (t: Throwable) {
+                if (t is CancellationException) throw t
             ManifestState.Failed(t.message ?: t::class.java.simpleName)
         }
     }
@@ -489,6 +494,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                                 installStatus =
                                     "Ready · ${result.downloadedFiles} core files + $assetCount assets"
                             } catch (t: Throwable) {
+                if (t is CancellationException) throw t
                                 installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
                             } finally {
                                 installing = false
