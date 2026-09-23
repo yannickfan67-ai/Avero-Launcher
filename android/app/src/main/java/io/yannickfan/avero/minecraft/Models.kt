@@ -43,6 +43,12 @@ data class ConditionalArgument(
     val rules: List<RuleSpec> = emptyList()
 )
 
+data class LoggingSpec(
+    val argument: String,
+    val fileId: String,
+    val file: DownloadSpec
+)
+
 data class LibrarySpec(
     val name: String,
     val artifact: DownloadSpec?,
@@ -61,6 +67,7 @@ data class MinecraftVersionMetadata(
     val assetIndexId: String,
     val assetIndex: DownloadSpec,
     val libraries: List<LibrarySpec>,
+    val logging: LoggingSpec?,
     val gameArguments: List<ConditionalArgument>,
     val jvmArguments: List<ConditionalArgument>
 )
@@ -91,7 +98,8 @@ data class LaunchPlan(
     val classpathEntries: List<String>,
     val jvmArguments: List<String>,
     val gameArguments: List<String>,
-    val nativeArchives: List<NativeArchivePlan> = emptyList()
+    val nativeArchives: List<NativeArchivePlan> = emptyList(),
+    val logging: LoggingSpec? = null
 )
 
 data class NativeArchivePlan(
