@@ -1,0 +1,2 @@
+This source archive includes gradle-wrapper.properties but not the binary gradle-wrapper.jar.
+Open the project in Android Studio and run `gradle wrapper --gradle-version 9.6` once if you want CLI wrapper scripts committed.
