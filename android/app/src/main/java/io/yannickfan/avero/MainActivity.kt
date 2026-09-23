@@ -51,8 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.yannickfan.avero.minecraft.GameInstaller
 import io.yannickfan.avero.minecraft.LaunchPlanner
 import io.yannickfan.avero.minecraft.LauncherInstance
 import io.yannickfan.avero.minecraft.MinecraftManifestClient
@@ -61,6 +63,7 @@ import io.yannickfan.avero.minecraft.RuntimeManager
 import io.yannickfan.avero.minecraft.VersionManifest
 import io.yannickfan.avero.ui.theme.AveroTheme
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -359,6 +362,11 @@ private fun VersionsScreen(padding: PaddingValues, state: ManifestState) {
 
 @Composable
 private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var installing by remember { mutableStateOf(false) }
+    var installStatus by remember { mutableStateOf("Idle") }
+
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -367,22 +375,77 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
         item {
             Text("Downloads", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "The downloader verifies size and SHA-1 before moving a completed file into place.",
+                "Install the official version metadata, client jar, asset index and Java libraries with size/SHA-1 verification.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         if (state is ManifestState.Ready) {
             val m = state.latestMetadata
+            val summary = state.manifest.versions.firstOrNull { it.id == m.id }
+
             item { StatusRow("Target version", m.id) }
             item { StatusRow("Client jar", formatBytes(m.client.size)) }
             item { StatusRow("Asset index", m.assetIndexId) }
             item { StatusRow("Libraries", m.libraries.size.toString()) }
+            item { StatusRow("Install state", installStatus) }
+
+            item {
+                Button(
+                    enabled = !installing && summary != null,
+                    onClick = {
+                        if (summary == null) return@Button
+                        scope.launch {
+                            installing = true
+                            installStatus = "Starting…"
+                            try {
+                                val result = GameInstaller().installVanillaCore(
+                                    summary = summary,
+                                    metadata = m,
+                                    root = File(context.filesDir, "minecraft")
+                                ) { progress ->
+                                    installStatus =
+                                        "${progress.completedFiles}/${progress.totalFiles} · ${progress.currentFile}"
+                                }
+                                installStatus =
+                                    "Core ready · ${result.downloadedFiles} files · ${result.root.absolutePath}"
+                            } catch (t: Throwable) {
+                                installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
+                            } finally {
+                                installing = false
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.Rounded.Download, null)
+                    Text(if (installing) " Installing…" else " Install core files")
+                }
+            }
+        } else {
+            item { StatusCard("Version metadata required", "Wait for the official manifest to load first.") }
         }
 
-        item { FeatureCard(Icons.Rounded.Download, "Verified downloads", "Temporary .part files, byte-size checks and SHA-1 verification are implemented.") }
-        item { FeatureCard(Icons.Rounded.Extension, "Loaders", "Fabric, Forge, NeoForge and Quilt installation remains the next loader milestone.") }
-        item { FeatureCard(Icons.Rounded.Storage, "Java runtimes", "Runtime requirements are detected; Android-compatible runtime packs still need installation support.") }
+        item {
+            FeatureCard(
+                Icons.Rounded.Download,
+                "Verified downloads",
+                "Downloads use temporary .part files and validate declared size and SHA-1 before installation."
+            )
+        }
+        item {
+            FeatureCard(
+                Icons.Rounded.Extension,
+                "Assets are next",
+                "The asset index is installed now; downloading every hashed asset object is the next installation stage."
+            )
+        }
+        item {
+            FeatureCard(
+                Icons.Rounded.Storage,
+                "Java runtimes",
+                "Runtime requirements are detected; Android-compatible runtime packs still need installation support."
+            )
+        }
     }
 }
 
