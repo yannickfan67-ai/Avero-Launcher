@@ -1,5 +1,7 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.runtime.AndroidJavaRuntimeCatalog
+import io.yannickfan.avero.runtime.RuntimeArch
 import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -8,29 +10,29 @@ import org.junit.Test
 
 class RuntimeManagerTest {
     @Test
-    fun discoversArm64RuntimeWithMatchingRelease() = withRuntimeRoot { root ->
-        installFakeRuntime(root, 21, "arm64-v8a", "21.0.7")
+    fun discoversArm64RuntimeUsingInstallerCatalogLayout() = withRuntimeRoot { root ->
+        installFakeRuntime(root, 21, RuntimeArch.ARM64)
 
         val requirement = RuntimeManager(root).requirementFor(
             metadata(javaMajor = 21),
-            architecture = "aarch64"
+            architecture = "arm64-v8a"
         )
 
         assertEquals(RuntimeState.AVAILABLE, requirement.state)
-        assertEquals("arm64-v8a", requirement.architecture)
+        assertEquals("arm64", requirement.architecture)
         assertEquals(21, requirement.installation?.javaMajorVersion)
         assertEquals(
-            root.resolve("21/arm64-v8a/bin/java").canonicalFile,
-            requirement.installation?.javaExecutable?.canonicalFile
+            AndroidJavaRuntimeCatalog.find(21, RuntimeArch.ARM64)?.id,
+            requirement.installation?.home?.name
         )
     }
 
     @Test
-    fun discoversX8664RuntimeAndLegacyJavaVersionSyntax() = withRuntimeRoot { root ->
-        installFakeRuntime(root, 8, "x86_64", "1.8.0_452")
+    fun discoversX8664RuntimeFromJvmArchitectureAlias() = withRuntimeRoot { root ->
+        installFakeRuntime(root, 17, RuntimeArch.X86_64)
 
         val requirement = RuntimeManager(root).requirementFor(
-            metadata(javaMajor = 8),
+            metadata(javaMajor = 17),
             architecture = "amd64"
         )
 
@@ -40,8 +42,34 @@ class RuntimeManagerTest {
     }
 
     @Test
-    fun wrongRuntimeMajorIsNotAccepted() = withRuntimeRoot { root ->
-        installFakeRuntime(root, 21, "arm64-v8a", "17.0.13")
+    fun supportsCatalogBacked32BitArmRuntime() = withRuntimeRoot { root ->
+        installFakeRuntime(root, 8, RuntimeArch.ARM)
+
+        val requirement = RuntimeManager(root).requirementFor(
+            metadata(javaMajor = 8),
+            architecture = "armeabi-v7a"
+        )
+
+        assertEquals(RuntimeState.AVAILABLE, requirement.state)
+        assertEquals("arm", requirement.architecture)
+    }
+
+    @Test
+    fun differentInstalledMajorDoesNotSatisfyRequirement() = withRuntimeRoot { root ->
+        installFakeRuntime(root, 17, RuntimeArch.ARM64)
+
+        val requirement = RuntimeManager(root).requirementFor(
+            metadata(javaMajor = 21),
+            architecture = "arm64-v8a"
+        )
+
+        assertEquals(RuntimeState.NEEDS_INSTALL, requirement.state)
+        assertNull(requirement.installation)
+    }
+
+    @Test
+    fun nonExecutableJavaIsNotReportedAvailable() = withRuntimeRoot { root ->
+        installFakeRuntime(root, 21, RuntimeArch.ARM64, executable = false)
 
         val requirement = RuntimeManager(root).requirementFor(
             metadata(javaMajor = 21),
@@ -55,8 +83,8 @@ class RuntimeManagerTest {
     @Test
     fun unsupportedAbiIsReportedAsUnsupported() = withRuntimeRoot { root ->
         val requirement = RuntimeManager(root).requirementFor(
-            metadata(javaMajor = 17),
-            architecture = "armeabi-v7a"
+            metadata(javaMajor = 21),
+            architecture = "riscv64"
         )
 
         assertEquals(RuntimeState.UNSUPPORTED, requirement.state)
@@ -64,29 +92,32 @@ class RuntimeManagerTest {
     }
 
     @Test
-    fun supportedAbiWithoutRuntimeNeedsInstall() = withRuntimeRoot { root ->
+    fun javaMajorWithoutCatalogPackageIsUnsupported() = withRuntimeRoot { root ->
         val requirement = RuntimeManager(root).requirementFor(
-            metadata(javaMajor = 17),
-            architecture = "x86_64"
+            metadata(javaMajor = 22),
+            architecture = "arm64-v8a"
         )
 
-        assertEquals(RuntimeState.NEEDS_INSTALL, requirement.state)
-        assertEquals("x86_64", requirement.architecture)
+        assertEquals(RuntimeState.UNSUPPORTED, requirement.state)
         assertNull(requirement.installation)
     }
 
     private fun installFakeRuntime(
         root: java.io.File,
         major: Int,
-        abi: String,
-        releaseVersion: String
+        arch: RuntimeArch,
+        executable: Boolean = true
     ) {
-        val home = root.resolve("$major/$abi")
+        val runtimePackage = requireNotNull(AndroidJavaRuntimeCatalog.find(major, arch))
+        val home = root.resolve(runtimePackage.id)
         val java = home.resolve("bin/java")
         java.parentFile.mkdirs()
         java.writeText("#!/bin/sh\nexit 0\n")
-        check(java.setExecutable(true, false)) { "Could not mark fake java executable" }
-        home.resolve("release").writeText("JAVA_VERSION=\"$releaseVersion\"\n")
+        if (executable) {
+            check(java.setExecutable(true, false)) { "Could not mark fake java executable" }
+        } else {
+            java.setExecutable(false, false)
+        }
     }
 
     private fun metadata(javaMajor: Int) = MinecraftVersionMetadata(
