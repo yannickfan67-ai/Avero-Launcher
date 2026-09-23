@@ -73,4 +73,24 @@ class AndroidNativeProviderCatalogTest {
             jvmArguments = emptyList<ConditionalArgument>()
         )
     }
+    @Test
+    fun pinnedGitBlobHashesAreFullSha1Values() {
+        for (version in listOf("3.3.3", "3.4.1")) {
+            val pkg = requireNotNull(
+                AndroidNativeProviderCatalog.find(version, RuntimeArch.ARM64)
+            )
+            val pins = buildList {
+                add(pkg.nativeArchive.gitBlobSha1)
+                addAll(pkg.javaComponents.map { it.download.gitBlobSha1 })
+            }
+
+            assertEquals(true, pins.isNotEmpty())
+            pins.forEach { pin ->
+                assertNotNull(pin)
+                assertEquals(40, pin!!.length)
+                assertEquals(true, pin.matches(Regex("[0-9a-f]{40}")))
+            }
+        }
+    }
+
 }
