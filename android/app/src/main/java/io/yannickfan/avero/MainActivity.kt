@@ -218,7 +218,7 @@ private fun HomeScreen(
                 is ManifestState.Ready -> {
                     val metadata = state.latestMetadata
                     val runtime = RuntimeManager().requirementFor(metadata)
-                    val plan = LaunchPlanner().createVanillaPlan(
+                    val plan = LaunchPlanner().createPreviewVanillaPlan(
                         metadata = metadata,
                         instance = LauncherInstance(
                             name = "Latest release",
