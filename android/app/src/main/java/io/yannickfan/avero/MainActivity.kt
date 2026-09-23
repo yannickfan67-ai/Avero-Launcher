@@ -289,11 +289,11 @@ private fun HomeScreen(
                 }
                 is ManifestState.Ready -> {
                     val metadata = state.latestMetadata
-                    val abi = Build.SUPPORTED_ABIS.firstOrNull()
-                        ?: System.getProperty("os.arch")
-                        ?: "unknown"
+                    val abi = Build.SUPPORTED_ABIS.firstOrNull {
+                        RuntimeManager.resolveRuntimeArch(it) != null
+                    } ?: System.getProperty("os.arch") ?: "unknown"
                     val runtime = RuntimeManager(
-                        managedRoot = File(context.filesDir, "minecraft/runtimes")
+                        managedRoot = File(context.filesDir, "runtimes")
                     ).requirementFor(metadata, abi)
                     val plan = LaunchPlanner().createVanillaPlan(
                         metadata = metadata,
