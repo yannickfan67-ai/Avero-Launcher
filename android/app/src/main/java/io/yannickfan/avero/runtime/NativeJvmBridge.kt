@@ -22,10 +22,21 @@ class NativeJvmBridge {
         runtime: InstalledJavaRuntime,
         command: ResolvedLaunchCommand,
         environment: JvmLaunchEnvironment
+    ): Int = launchRaw(
+        runtime = runtime,
+        args = command.asArgumentList(runtime.javaExecutable.absolutePath),
+        environment = environment
+    )
+
+    suspend fun launchRaw(
+        runtime: InstalledJavaRuntime,
+        args: List<String>,
+        environment: JvmLaunchEnvironment
     ): Int = withContext(Dispatchers.IO) {
         require(runtime.home.canonicalFile == environment.javaHome.canonicalFile) {
             "Launch environment Java home does not match installed runtime"
         }
+        require(args.isNotEmpty()) { "JVM argument list is empty" }
         require(environment.gameDirectory.isDirectory || environment.gameDirectory.mkdirs()) {
             "Could not create game directory"
         }
@@ -46,7 +57,9 @@ class NativeJvmBridge {
                 runtime.home.walkTopDown()
                     .filter { dir ->
                         dir.isDirectory &&
-                            dir.listFiles()?.any { child -> child.isFile && child.name.endsWith(".so") } == true
+                            dir.listFiles()?.any { child ->
+                                child.isFile && child.name.endsWith(".so")
+                            } == true
                     }
                     .toList()
             )
@@ -61,8 +74,6 @@ class NativeJvmBridge {
                 it.absolutePath
             }
         )
-
-        val args = command.asArgumentList(runtime.javaExecutable.absolutePath)
 
         nativeLaunch(
             jliPath = jli.absolutePath,
