@@ -95,14 +95,12 @@ class MinecraftManifestClient(
             }
 
             val arguments = root.optJSONObject("arguments")
-            val gameArguments = flattenSimpleArguments(arguments?.optJSONArray("game"))
+            val gameArguments = parseArguments(arguments?.optJSONArray("game"))
                 .ifEmpty {
-                    root.optString("minecraftArguments")
-                        .takeIf { it.isNotBlank() }
-                        ?.split(' ')
-                        .orEmpty()
+                    splitLegacyArguments(root.optString("minecraftArguments"))
+                        .map { MinecraftArgument(values = listOf(it)) }
                 }
-            val jvmArguments = flattenSimpleArguments(arguments?.optJSONArray("jvm"))
+            val jvmArguments = parseArguments(arguments?.optJSONArray("jvm"))
 
             return MinecraftVersionMetadata(
                 id = root.getString("id"),
@@ -126,17 +124,121 @@ class MinecraftManifestClient(
             )
         }
 
-        private fun flattenSimpleArguments(array: JSONArray?): List<String> {
+        private fun parseArguments(array: JSONArray?): List<MinecraftArgument> {
             if (array == null) return emptyList()
+
             return buildList {
                 for (i in 0 until array.length()) {
                     when (val value = array.get(i)) {
-                        is String -> add(value)
-                        // Rule-controlled objects are intentionally deferred to the rule evaluator.
-                        is JSONObject -> Unit
+                        is String -> add(MinecraftArgument(values = listOf(value)))
+                        is JSONObject -> {
+                            val values = parseArgumentValue(value.opt("value"))
+                            if (values.isNotEmpty()) {
+                                add(
+                                    MinecraftArgument(
+                                        values = values,
+                                        rules = parseRules(value.optJSONArray("rules"))
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        private fun parseArgumentValue(value: Any?): List<String> =
+            when (value) {
+                is String -> listOf(value)
+                is JSONArray -> buildList {
+                    for (i in 0 until value.length()) {
+                        val item = value.opt(i)
+                        if (item is String) add(item)
+                    }
+                }
+                else -> emptyList()
+            }
+
+        private fun parseRules(array: JSONArray?): List<ArgumentRule> {
+            if (array == null) return emptyList()
+
+            return buildList {
+                for (i in 0 until array.length()) {
+                    val rule = array.getJSONObject(i)
+                    val action = when (rule.optString("action", "allow").lowercase()) {
+                        "allow" -> RuleAction.ALLOW
+                        "disallow" -> RuleAction.DISALLOW
+                        else -> error("Unsupported Mojang rule action: \${rule.optString("action")}")
+                    }
+
+                    val osJson = rule.optJSONObject("os")
+                    val os = osJson?.let {
+                        RuleOs(
+                            name = it.optString("name").takeIf(String::isNotBlank),
+                            arch = it.optString("arch").takeIf(String::isNotBlank),
+                            version = it.optString("version").takeIf(String::isNotBlank)
+                        )
+                    }
+
+                    val featuresJson = rule.optJSONObject("features")
+                    val features = buildMap {
+                        if (featuresJson != null) {
+                            val keys = featuresJson.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                put(key, featuresJson.optBoolean(key, false))
+                            }
+                        }
+                    }
+
+                    add(ArgumentRule(action = action, os = os, features = features))
+                }
+            }
+        }
+
+        internal fun splitLegacyArguments(value: String): List<String> {
+            if (value.isBlank()) return emptyList()
+
+            val result = mutableListOf<String>()
+            val current = StringBuilder()
+            var quote: Char? = null
+            var escaped = false
+
+            fun flush() {
+                if (current.isNotEmpty()) {
+                    result += current.toString()
+                    current.setLength(0)
+                }
+            }
+
+            for (char in value) {
+                if (escaped) {
+                    current.append(char)
+                    escaped = false
+                    continue
+                }
+
+                if (char == '\\') {
+                    escaped = true
+                    continue
+                }
+
+                if (quote != null) {
+                    if (char == quote) quote = null else current.append(char)
+                    continue
+                }
+
+                when (char) {
+                    '"', '\'' -> quote = char
+                    ' ', '\t', '\n', '\r' -> flush()
+                    else -> current.append(char)
+                }
+            }
+
+            if (escaped) current.append('\\')
+            require(quote == null) { "Unterminated quote in legacy minecraftArguments" }
+            flush()
+            return result
         }
     }
 }
