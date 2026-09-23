@@ -388,7 +388,7 @@ private fun HomeScreen(
         item { SectionTitle("Launcher pipeline") }
         item { StatusRow("Official version manifest", if (state is ManifestState.Ready) "working" else "pending") }
         item { StatusRow("Version metadata parser", if (state is ManifestState.Ready) "working" else "pending") }
-        item { StatusRow("Verified file downloader", "implemented") }
+        item { StatusRow("Verified + resumable downloads", "implemented") }
         item { StatusRow("Vanilla launch-plan builder", "implemented") }
         item {
             StatusRow(
@@ -646,7 +646,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
             FeatureCard(
                 Icons.Rounded.Download,
                 "Verified downloads",
-                "Downloads use temporary .part files and validate declared size and SHA-1 before installation."
+                "Interrupted transfers keep .part files, resume with HTTP Range when possible, retry transient failures, and validate size plus SHA digests before installation."
             )
         }
         item {
