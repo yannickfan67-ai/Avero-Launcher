@@ -67,9 +67,11 @@ import io.yannickfan.avero.minecraft.LauncherInstance
 import io.yannickfan.avero.minecraft.MinecraftManifestClient
 import io.yannickfan.avero.minecraft.MinecraftVersionMetadata
 import io.yannickfan.avero.minecraft.RuntimeManager
+import io.yannickfan.avero.minecraft.RuntimeState
 import io.yannickfan.avero.minecraft.VersionManifest
 import io.yannickfan.avero.runtime.AndroidJavaRuntimeCatalog
 import io.yannickfan.avero.runtime.AndroidJavaRuntimeInstaller
+import io.yannickfan.avero.runtime.JvmProbeActivity
 import io.yannickfan.avero.runtime.RuntimeArch
 import io.yannickfan.avero.ui.theme.AveroTheme
 import kotlinx.coroutines.CancellationException
@@ -475,6 +477,10 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
             item { StatusRow("Asset index", m.assetIndexId) }
             val runtimePackage = AndroidJavaRuntimeCatalog.find(m.javaMajorVersion)
             val currentArch = RuntimeArch.current()
+            val runtimeRequirement = RuntimeManager().requirementFor(
+                metadata = m,
+                runtimeRoot = File(context.filesDir, "runtimes")
+            )
 
             item { StatusRow("Libraries", m.libraries.size.toString()) }
             item { StatusRow("Game install", installStatus) }
@@ -522,6 +528,24 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                         if (runtimeInstalling) " Installing Java…"
                         else " Install Java ${runtimePackage?.majorVersion ?: m.javaMajorVersion}"
                     )
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    enabled = runtimeRequirement.state == RuntimeState.AVAILABLE &&
+                        !runtimeInstalling,
+                    onClick = {
+                        context.startActivity(
+                            Intent(context, JvmProbeActivity::class.java)
+                                .putExtra(
+                                    JvmProbeActivity.EXTRA_JAVA_MAJOR,
+                                    m.javaMajorVersion
+                                )
+                        )
+                    }
+                ) {
+                    Text("Test Java runtime")
                 }
             }
 
