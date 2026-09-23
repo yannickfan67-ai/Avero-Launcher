@@ -1,5 +1,7 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.androidnative.AndroidNativeProviderPlan
+
 class LaunchPlanner(
     private val rules: RuleEvaluator = RuleEvaluator(),
     private val nativeResolver: NativeLibraryResolver = NativeLibraryResolver()
@@ -8,7 +10,8 @@ class LaunchPlanner(
         metadata: MinecraftVersionMetadata,
         instance: LauncherInstance,
         context: RuleContext = MinecraftPlatform.androidRuleContext(),
-        nativeClassifierPolicy: NativeClassifierPolicy = NativeClassifierPolicy.DISABLED
+        nativeClassifierPolicy: NativeClassifierPolicy = NativeClassifierPolicy.DISABLED,
+        androidNativeProvider: AndroidNativeProviderPlan? = null
     ): LaunchPlan {
         require(instance.loader == Loader.VANILLA) {
             "Loader-specific metadata must be normalized before launch planning"
@@ -19,6 +22,7 @@ class LaunchPlanner(
         }
 
         val classpath = buildList {
+            androidNativeProvider?.classpathEntry?.let(::add)
             allowedLibraries.mapNotNullTo(this) { it.artifact?.path }
             add("versions/${metadata.id}/${metadata.id}.jar")
         }
@@ -41,7 +45,8 @@ class LaunchPlanner(
                 context,
                 nativeClassifierPolicy
             ),
-            logging = metadata.logging
+            logging = metadata.logging,
+            androidNativeProvider = androidNativeProvider
         )
     }
 }
