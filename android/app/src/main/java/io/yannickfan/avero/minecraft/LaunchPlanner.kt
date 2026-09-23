@@ -35,7 +35,8 @@ class LaunchPlanner(
             classpathEntries = classpath,
             jvmArguments = jvm,
             gameArguments = rules.resolveArguments(metadata.gameArguments, context),
-            nativeArchives = nativeResolver.resolve(allowedLibraries, context)
+            nativeArchives = nativeResolver.resolve(allowedLibraries, context),
+            logging = metadata.logging
         )
     }
 }
