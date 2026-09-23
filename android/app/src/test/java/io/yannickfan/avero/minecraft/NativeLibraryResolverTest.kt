@@ -4,6 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class NativeLibraryResolverTest {
+    private fun variable(name: String): String =
+        36.toChar().toString() + "{" + name + "}"
+
     @Test
     fun resolvesArchPlaceholderInClassifier() {
         val download = DownloadSpec(
@@ -16,7 +19,7 @@ class NativeLibraryResolverTest {
             name = "example:native:1",
             artifact = null,
             classifiers = mapOf("natives-linux-64" to download),
-            natives = mapOf("linux" to "natives-linux-${arch}")
+            natives = mapOf("linux" to "natives-linux-" + variable("arch"))
         )
 
         val result = NativeLibraryResolver().resolve(
