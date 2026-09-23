@@ -66,6 +66,10 @@ class LaunchPlanner(
     }
     private fun libraryClasspathEntry(path: String): String {
         val normalized = path.replace('\\', '/').trimStart('/')
+        require(normalized.isNotBlank()) { "Library artifact path is empty" }
+        require(normalized.split('/').none { it == ".." }) {
+            "Library artifact path escapes the managed library directory: " + path
+        }
         return if (normalized.startsWith("libraries/")) {
             normalized
         } else {
