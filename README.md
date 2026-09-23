@@ -20,7 +20,17 @@ It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. 
 
 ## Current state
 
-The repository currently contains the Android UI foundation and CI build. The actual Minecraft runtime / authentication / version-launch pipeline is the next major implementation stage.
+Avero now has a working native Android foundation plus the first real vanilla installation and launch-planning pieces:
+
+- Mojang version manifest and per-version metadata parsing
+- verified client, library, asset-index and hashed asset downloads
+- Android runtime requirement detection
+- Mojang conditional argument-rule evaluation
+- launcher placeholder expansion with unresolved-variable validation
+- modern Compose launcher UI and debug APK CI
+- unit tests for modern rule-controlled arguments and legacy `minecraftArguments`
+
+Microsoft authentication, Android Java runtime installation, native extraction and the final Java process bridge are still in progress.
 
 The Android source lives in [`android/`](android/).
 
