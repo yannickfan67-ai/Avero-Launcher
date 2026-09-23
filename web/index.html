@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0d12" />
+  <meta name="description" content="Avero — a fresh Android-first workspace for projects, code and future AI tooling." />
+  <title>Avero — Android-first workspace</title>
+  <link rel="icon" href="logo.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav shell">
+    <a class="brand" href="#top" aria-label="Avero home">
+      <img src="logo.svg" alt="" />
+      <span>Avero</span>
+    </a>
+    <nav>
+      <a href="#product">Product</a>
+      <a href="#principles">Principles</a>
+      <a href="#android">Android</a>
+    </nav>
+    <button id="themeToggle" class="icon-button" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow">A NEW ANDROID CODEBASE</p>
+        <h1>Drop the old prefix.<br><span>Build mobile properly.</span></h1>
+        <p class="lede">Avero is a fresh Android-first workspace for projects, repository browsing and coding tools — native UI, adaptive layouts, and no desktop code dragged along for the ride.</p>
+        <div class="actions">
+          <a class="button primary" href="#android">See Android build</a>
+          <a class="button secondary" href="#product">Explore the concept</a>
+        </div>
+        <div class="meta">
+          <span>Native Kotlin</span><span>Jetpack Compose</span><span>Android 17 ready</span>
+        </div>
+      </div>
+
+      <div class="phone-wrap" aria-label="Avero Android preview">
+        <div class="phone">
+          <div class="phone-bar"><span class="mini-logo">A</span><strong>Avero</strong><span>⋯</span></div>
+          <div class="phone-content">
+            <small>MOBILE WORKSPACE</small>
+            <h2>Everything you need,<br>without the desktop baggage.</h2>
+            <div class="mobile-grid">
+              <div class="mobile-card"><b>Projects</b><span>Browse local work</span></div>
+              <div class="mobile-card"><b>Workspace</b><span>Draft & inspect</span></div>
+            </div>
+            <div class="mobile-list"><span>◫</span><div><b>Android sandbox</b><small>Kotlin · local</small></div></div>
+            <div class="mobile-list"><span>⌁</span><div><b>AI slot</b><small>Provider-neutral</small></div></div>
+          </div>
+          <div class="phone-nav"><b>⌂</b><span>▣</span><span>⌘</span><span>⚙</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="product" class="section shell">
+      <p class="eyebrow">PRODUCT</p>
+      <div class="section-head"><h2>Small core. Clear expansion points.</h2><p>The first version establishes the surfaces we can later connect to Git, repositories, local tools and coding AI without locking the app to one service.</p></div>
+      <div class="tiles">
+        <article class="tile wide"><span class="tile-id">01</span><h3>Projects</h3><p>A clean mobile project browser for local work, imported repositories and temporary scratch spaces.</p><div class="fake-row"><i></i><span>android-sandbox</span><em>Kotlin</em></div><div class="fake-row"><i></i><span>website</span><em>HTML</em></div></article>
+        <article class="tile"><span class="tile-id">02</span><h3>Workspace</h3><p>Code snippets, diffs, notes and repository context in a phone-friendly surface.</p></article>
+        <article class="tile"><span class="tile-id">03</span><h3>AI, later</h3><p>The UI reserves an AI layer, but the initial client does not hard-wire a provider or force cloud usage.</p></article>
+      </div>
+    </section>
+
+    <section id="principles" class="section shell split">
+      <div><p class="eyebrow">PRINCIPLES</p><h2>Not a port.<br>Not a WebView.</h2></div>
+      <div class="principles">
+        <div><b>Native first</b><p>Kotlin + Compose, designed around Android interaction patterns.</p></div>
+        <div><b>Independent</b><p>A separate package and codebase instead of a thin client for the PC app.</p></div>
+        <div><b>Adaptive</b><p>Phone, tablet, foldable and desktop-window layouts are treated as first-class targets.</p></div>
+        <div><b>Open-ended</b><p>Git, repo hosting, terminal bridges and AI can arrive as clean modules later.</p></div>
+      </div>
+    </section>
+
+    <section id="android" class="section shell download">
+      <div>
+        <p class="eyebrow">ANDROID 0.1.0</p>
+        <h2>The foundation is here.</h2>
+        <p>Package <code>io.yannickfan.avero</code>. Minimum Android 8.0, targeting API 37 with a native Compose interface.</p>
+      </div>
+      <div class="status-card">
+        <span class="status-dot"></span>
+        <div><b>Source skeleton ready</b><small>App structure + website prototype</small></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell"><div class="brand"><img src="logo.svg" alt="" /><span>Avero</span></div><p>Fresh start. Android first.</p></footer>
+  <script src="app.js"></script>
+</body>
+</html>
