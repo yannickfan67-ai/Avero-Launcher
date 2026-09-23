@@ -39,6 +39,23 @@ class LibrarySelectorTest {
         assertEquals(0, selection.strippedDesktopNativeArtifacts)
     }
 
+
+    @Test
+    fun nonDesktopNativeClassifierIsPreserved() {
+        val selection = LibrarySelector().select(
+            libraries = listOf(
+                library(
+                    "org.lwjgl:lwjgl:3.4.1:natives-android",
+                    "org/lwjgl/lwjgl/3.4.1/lwjgl-3.4.1-natives-android.jar"
+                )
+            ),
+            context = context
+        )
+
+        assertEquals(1, selection.effective.size)
+        assertEquals(0, selection.strippedDesktopNativeArtifacts)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun AndroidProviderCannotBeCombinedWithDesktopNativePolicy() {
         LibrarySelector().select(
