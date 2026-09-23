@@ -27,7 +27,8 @@ class LaunchPlannerTest {
                     name = "org.lwjgl:lwjgl:3.4.1",
                     artifact = dummy.copy(
                         path = "libraries/org/lwjgl/lwjgl/3.4.1/lwjgl-3.4.1.jar"
-                    )
+                    ),
+                    natives = mapOf("linux" to "natives-linux")
                 )
             ),
             logging = null,
@@ -57,6 +58,7 @@ class LaunchPlannerTest {
             plan.classpathEntries.take(provider.classpathEntries.size)
         )
         assertEquals(provider, plan.androidNativeProvider)
+        assertTrue(plan.requiresNatives)
         assertTrue(plan.nativeArchives.isEmpty())
     }
 }
