@@ -21,7 +21,7 @@ class NativeLibraryResolver(
 
                 val template = library.natives[context.osName] ?: continue
                 val classifier = template.replace(
-                    "${arch}",
+                    "\${arch}",
                     MinecraftPlatform.classifierArchToken(context.osArch)
                 )
                 val download = library.classifiers[classifier] ?: continue
