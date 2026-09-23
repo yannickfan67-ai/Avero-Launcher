@@ -35,6 +35,18 @@ The Android source lives in [`android/`](android/).
 - Gradle: 9.6
 - AGP: 9.4.0
 
+## Microsoft account authentication
+
+Avero uses Microsoft's **public-client device-code flow**. No Microsoft client secret is embedded in the APK.
+
+Create or use an Avero Microsoft app registration configured for personal Microsoft accounts and public client/device-code authentication, then build with:
+
+```bash
+AVERO_MS_CLIENT_ID="<application-client-id>" gradle assembleDebug
+```
+
+GitHub Actions can provide the same non-secret client ID through the `AVERO_MS_CLIENT_ID` environment variable. Builds without it still compile, but the Accounts page will show that Microsoft login is not configured.
+
 ## Planned architecture
 
 See [`LAUNCHER_ARCHITECTURE.md`](LAUNCHER_ARCHITECTURE.md).
