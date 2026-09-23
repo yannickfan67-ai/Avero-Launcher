@@ -19,6 +19,12 @@ class InstanceLayout(private val root: File) {
     fun gameDirectory(instanceName: String) =
         File(root, "instances/${sanitize(instanceName)}/game")
 
+    fun nativesDirectory(instanceName: String) =
+        File(root, "instances/${sanitize(instanceName)}/natives")
+
+    fun nativesStagingDirectory(instanceName: String) =
+        File(root, "instances/${sanitize(instanceName)}/.natives-staging")
+
     private fun sanitize(value: String): String =
         value.replace(Regex("[^A-Za-z0-9._-]"), "_")
 }
