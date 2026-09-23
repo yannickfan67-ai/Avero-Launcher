@@ -1,18 +1,26 @@
 # Avero Launcher
 
-Avero is a fresh, Android-first developer workspace and launcher. It is independent from the old `UN_Nexo` desktop codebase and intentionally starts with a native mobile architecture.
+Avero is an independent **Minecraft: Java Edition launcher for Android**.
 
-## Current direction
+It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. The goal is to launch and manage Java Edition cleanly on Android with a native Kotlin + Jetpack Compose interface.
 
-- Native Android app written in Kotlin + Jetpack Compose
-- Touch-first project/workspace UI
-- Projects and repository workflows
-- Future coding assistant integration
-- Terminal/developer-tool integration
-- No WebView shell
-- No Minecraft-specific AI integration
+## Product direction
 
-## Android project
+- Minecraft: Java Edition launch flow on Android
+- Microsoft account authentication
+- Minecraft profile / entitlement handling
+- Java runtime management
+- Version installation and instance management
+- Fabric / Forge / NeoForge / Quilt support
+- Modrinth integration
+- JVM arguments and memory controls
+- Renderer / compatibility settings
+- Download progress, logs and crash diagnostics
+- Native Android UI; no WebView shell for the launcher itself
+
+## Current state
+
+The repository currently contains the Android UI foundation and CI build. The actual Minecraft runtime / authentication / version-launch pipeline is the next major implementation stage.
 
 The Android source lives in [`android/`](android/).
 
@@ -23,13 +31,17 @@ The Android source lives in [`android/`](android/).
 - Gradle: 9.6
 - AGP: 9.4.0
 
-## Website prototype
+## Planned architecture
 
-The static landing-page prototype can evolve independently from the Android application.
+See [`LAUNCHER_ARCHITECTURE.md`](LAUNCHER_ARCHITECTURE.md).
 
 ## Development tools
 
-See [`DEV_TOOLS.md`](DEV_TOOLS.md) for the desktop, command-line and on-device Android development environments being considered.
+See [`DEV_TOOLS.md`](DEV_TOOLS.md). These are tools used to **develop Avero**, not features inside the launcher.
+
+## Website prototype
+
+The static product site lives in [`web/`](web/).
 
 ## License
 
