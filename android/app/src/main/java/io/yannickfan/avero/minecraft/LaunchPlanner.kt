@@ -30,7 +30,9 @@ class LaunchPlanner(
 
         val classpath = buildList {
             addAll(androidNativeProvider?.classpathEntries.orEmpty())
-            effectiveLibraries.mapNotNullTo(this) { it.artifact?.path }
+            effectiveLibraries.mapNotNullTo(this) { library ->
+                library.artifact?.path?.let(::libraryClasspathPath)
+            }
             add("versions/${metadata.id}/${metadata.id}.jar")
         }
 
@@ -61,5 +63,14 @@ class LaunchPlanner(
             logging = metadata.logging,
             androidNativeProvider = androidNativeProvider
         )
+    }
+
+    private fun libraryClasspathPath(path: String): String {
+        val normalized = path.replace('\\', '/').trimStart('/')
+        require(normalized.isNotBlank()) { "Library artifact path is empty" }
+        require(normalized.split('/').none { it == ".." }) {
+            "Library artifact path escapes the managed library directory: $path"
+        }
+        return if (normalized.startsWith("libraries/")) normalized else "libraries/$normalized"
     }
 }
