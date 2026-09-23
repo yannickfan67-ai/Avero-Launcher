@@ -157,6 +157,7 @@ private fun GameLaunchScreen(
                     view.holder.addCallback(
                         object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
+                                GameSurfaceBridge.attach(holder.surface)
                                 surfaceReady = true
                             }
 
@@ -166,10 +167,12 @@ private fun GameLaunchScreen(
                                 width: Int,
                                 height: Int
                             ) {
+                                GameSurfaceBridge.attach(holder.surface)
                                 surfaceReady = true
                             }
 
                             override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                GameSurfaceBridge.detach()
                                 surfaceReady = false
                             }
                         }

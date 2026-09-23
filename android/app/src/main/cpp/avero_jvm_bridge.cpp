@@ -1,15 +1,20 @@
 #include <jni.h>
 #include <android/log.h>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
 #include <dlfcn.h>
 #include <unistd.h>
 
 #include <cstdlib>
+#include <mutex>
 #include <string>
 #include <vector>
 
 namespace {
 
 constexpr const char* kLogTag = "AveroJVM";
+std::mutex gGameWindowMutex;
+ANativeWindow* gGameWindow = nullptr;
 
 using JliLaunch = jint (*)(
     int argc,
@@ -186,4 +191,84 @@ Java_io_yannickfan_avero_runtime_NativeJvmBridge_nativeLaunch(
         JNI_FALSE,
         0
     );
+}
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_io_yannickfan_avero_game_GameSurfaceBridge_nativeAttachSurface(
+    JNIEnv* env,
+    jobject /* thiz */,
+    jobject surface
+) {
+    if (surface == nullptr) {
+        throwIllegalState(env, "Game surface is null");
+        return;
+    }
+
+    ANativeWindow* next = ANativeWindow_fromSurface(env, surface);
+    if (next == nullptr) {
+        throwIllegalState(env, "Could not create ANativeWindow from game surface");
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(gGameWindowMutex);
+    if (gGameWindow != nullptr) {
+        ANativeWindow_release(gGameWindow);
+    }
+    gGameWindow = next;
+
+    __android_log_print(
+        ANDROID_LOG_INFO,
+        kLogTag,
+        "Game surface attached: %dx%d",
+        ANativeWindow_getWidth(gGameWindow),
+        ANativeWindow_getHeight(gGameWindow)
+    );
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_io_yannickfan_avero_game_GameSurfaceBridge_nativeDetachSurface(
+    JNIEnv* /* env */,
+    jobject /* thiz */
+) {
+    std::lock_guard<std::mutex> lock(gGameWindowMutex);
+    if (gGameWindow != nullptr) {
+        ANativeWindow_release(gGameWindow);
+        gGameWindow = nullptr;
+    }
+    __android_log_print(ANDROID_LOG_INFO, kLogTag, "Game surface detached");
+}
+
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_io_yannickfan_avero_game_GameSurfaceBridge_nativeSurfaceSize(
+    JNIEnv* env,
+    jobject /* thiz */
+) {
+    jint values[2] = {0, 0};
+    {
+        std::lock_guard<std::mutex> lock(gGameWindowMutex);
+        if (gGameWindow != nullptr) {
+            values[0] = ANativeWindow_getWidth(gGameWindow);
+            values[1] = ANativeWindow_getHeight(gGameWindow);
+        }
+    }
+
+    jintArray result = env->NewIntArray(2);
+    if (result != nullptr) {
+        env->SetIntArrayRegion(result, 0, 2, values);
+    }
+    return result;
+}
+
+// Future renderer backends can acquire this window without depending on Compose.
+extern "C"
+ANativeWindow* avero_acquire_game_window() {
+    std::lock_guard<std::mutex> lock(gGameWindowMutex);
+    if (gGameWindow != nullptr) {
+        ANativeWindow_acquire(gGameWindow);
+    }
+    return gGameWindow;
 }

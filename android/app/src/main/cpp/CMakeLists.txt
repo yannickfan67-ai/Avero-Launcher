@@ -13,9 +13,11 @@ target_compile_options(avero_jvm PRIVATE -Wall -Wextra -Werror=return-type)
 
 find_library(log-lib log)
 find_library(dl-lib dl)
+find_library(android-lib android)
 
 target_link_libraries(
     avero_jvm
     ${log-lib}
     ${dl-lib}
+    ${android-lib}
 )
