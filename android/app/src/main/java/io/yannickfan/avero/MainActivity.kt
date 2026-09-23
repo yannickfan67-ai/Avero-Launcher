@@ -142,6 +142,7 @@ fun AveroApp() {
                 accountState = AccountState.Completing
                 AccountState.SignedIn(auth.authenticateMinecraft(microsoftToken))
             } catch (t: Throwable) {
+                t.rethrowIfCancellation()
                 if (t is CancellationException) throw t
                 AccountState.Failed(t.message ?: t::class.java.simpleName)
             }
@@ -158,6 +159,7 @@ fun AveroApp() {
                 val metadata = client.fetchVersion(latest)
                 ManifestState.Ready(manifest, metadata)
             } catch (t: Throwable) {
+                t.rethrowIfCancellation()
                 if (t is CancellationException) throw t
                 ManifestState.Failed(t.message ?: t::class.java.simpleName)
             }
@@ -168,6 +170,7 @@ fun AveroApp() {
         val manifest = try {
             client.fetchManifest()
         } catch (t: Throwable) {
+                t.rethrowIfCancellation()
                 if (t is CancellationException) throw t
             manifestState = ManifestState.Failed(t.message ?: t::class.java.simpleName)
             return@LaunchedEffect
@@ -178,6 +181,7 @@ fun AveroApp() {
                 ?: error("Latest release not present in manifest")
             ManifestState.Ready(manifest, client.fetchVersion(latest))
         } catch (t: Throwable) {
+                t.rethrowIfCancellation()
                 if (t is CancellationException) throw t
             ManifestState.Failed(t.message ?: t::class.java.simpleName)
         }
@@ -494,6 +498,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                                 installStatus =
                                     "Ready · ${result.downloadedFiles} core files + $assetCount assets"
                             } catch (t: Throwable) {
+                t.rethrowIfCancellation()
                 if (t is CancellationException) throw t
                                 installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
                             } finally {
@@ -756,4 +761,9 @@ private fun formatBytes(bytes: Long?): String {
     if (bytes == null) return "unknown"
     val mib = bytes.toDouble() / 1024.0 / 1024.0
     return "%.1f MiB".format(mib)
+}
+
+
+private fun Throwable.rethrowIfCancellation() {
+    if (this is CancellationException) throw this
 }
