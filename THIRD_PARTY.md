@@ -16,6 +16,20 @@ Avero does **not** relicense these runtime binaries as MIT. They are downloaded 
 
 Avero's runtime catalog stores upstream URLs, expected byte sizes and SHA-256 hashes only.
 
+## Android LWJGL native provider
+
+Avero can download Android LWJGL bridge AARs from:
+
+- Project: `AngelAuraMC/Amethyst-Android`
+- Upstream source: https://github.com/AngelAuraMC/Amethyst-Android
+- Pinned upstream commit: `330c6eae3164df64bdc4828e946a9e62cc5169e4`
+- Catalogued provider versions: LWJGL 3.3.3 and 3.4.1
+- Upstream project license: GNU LGPL v3
+
+The provider is **not** part of Avero's MIT-licensed source. Avero downloads it separately when requested, validates the exact upstream Git blob SHA-1 and byte size, and extracts the provider `classes.jar` plus native libraries only for the device ABI.
+
+The provider remains replaceable on disk rather than being relicensed or copied into Avero's source tree. Users should refer to the pinned upstream source and license for the complete corresponding source and license terms.
+
 ## Archive libraries
 
 Avero uses these libraries to extract runtime `.tar.xz` packages:
