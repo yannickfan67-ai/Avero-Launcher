@@ -16,45 +16,17 @@ class LaunchPlanner(
         require(instance.loader == Loader.VANILLA) {
             "Loader-specific metadata must be normalized before launch planning"
         }
-        require(
-            androidNativeProvider == null ||
-                nativeClassifierPolicy == NativeClassifierPolicy.DISABLED
-        ) {
-            "Use either an Android native provider or Mojang desktop classifiers, not both"
-        }
+        val librarySelection = LaunchLibraryResolver(
+            rules = rules,
+            nativeResolver = nativeResolver
+        ).resolve(
+            libraries = metadata.libraries,
+            context = context,
+            nativeClassifierPolicy = nativeClassifierPolicy,
+            androidNativeProvider = androidNativeProvider
+        )
 
-        val allowedLibraries = metadata.libraries.filter {
-            rules.isAllowed(it.rules, context)
-        }
-        val nativeLibraries = allowedLibraries.filter { it.natives.isNotEmpty() }
-
-        val nativeArchives =
-            if (
-                androidNativeProvider == null &&
-                nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP
-            ) {
-                nativeResolver.resolve(
-                    allowedLibraries,
-                    context,
-                    nativeClassifierPolicy
-                )
-            } else {
-                emptyList()
-            }
-
-        val nativeState = when {
-            androidNativeProvider != null ->
-                NativePlanState.READY
-            nativeLibraries.isEmpty() ->
-                NativePlanState.NOT_REQUIRED
-            nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP &&
-                nativeArchives.size == nativeLibraries.size ->
-                NativePlanState.READY
-            nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP ->
-                NativePlanState.MISSING_COMPATIBLE_ARCHIVES
-            else ->
-                NativePlanState.MISSING_ANDROID_PROVIDER
-        }
+        val effectiveLibraries = librarySelection.libraries
 
         val classpath = buildList {
             androidNativeProvider?.classpathEntry?.let(::add)
