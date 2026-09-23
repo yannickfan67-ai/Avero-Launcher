@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.nio.file.Files
+import java.security.MessageDigest
 
 class AndroidLaunchReadyPreparerTest {
     private fun variable(name: String): String =
@@ -112,6 +113,31 @@ class AndroidLaunchReadyPreparerTest {
         }
     }
 
+
+    @Test
+    fun prefixedLibraryPathDoesNotDuplicateLibrariesDirectory() {
+        val root = Files.createTempDirectory("avero-library-path-").toFile()
+        try {
+            val layout = InstanceLayout(root)
+            val expected = File(
+                root,
+                "libraries/org/example/example/1/example-1.jar"
+            ).canonicalFile
+
+            assertEquals(
+                expected,
+                layout.library(
+                    "libraries/org/example/example/1/example-1.jar"
+                ).canonicalFile
+            )
+            assertThrows(IllegalArgumentException::class.java) {
+                layout.library("../escape.jar")
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun fixture(root: File): Fixture {
         val version = "1.21.4"
         val lwjglPath = "org/lwjgl/lwjgl/3.4.1/lwjgl-3.4.1.jar"
@@ -126,7 +152,8 @@ class AndroidLaunchReadyPreparerTest {
             writeText("library")
         }
 
-        val assetHash = "aa" + "0".repeat(38)
+        val assetPayload = "payload".toByteArray()
+        val assetHash = sha1(assetPayload)
         layout.assetIndex("17").apply {
             parentFile?.mkdirs()
             writeText(
@@ -144,7 +171,7 @@ class AndroidLaunchReadyPreparerTest {
         }
         val assetObject = layout.assetObject(assetHash).apply {
             parentFile?.mkdirs()
-            writeText("payload")
+            writeBytes(assetPayload)
         }
 
         val metadata = MinecraftVersionMetadata(
@@ -268,4 +295,9 @@ class AndroidLaunchReadyPreparerTest {
         val nativeDirectory: File,
         val assetObject: File
     )
+    private fun sha1(data: ByteArray): String =
+        MessageDigest.getInstance("SHA-1")
+            .digest(data)
+            .joinToString("") { "%02x".format(it) }
+
 }
