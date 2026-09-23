@@ -20,6 +20,7 @@ data class LaunchEnvironment(
     val assetsIndexName: String,
     val nativesDirectory: File,
     val libraryDirectory: File,
+    val loggingConfigFile: File? = null,
     val launcherName: String = "Avero",
     val launcherVersion: String = "0.1.0",
     val resolutionWidth: Int = 1280,
@@ -52,7 +53,7 @@ class LaunchCommandBuilder {
             .map { entry -> File(environment.minecraftRoot, entry).absolutePath }
             .joinToString(classpathSeparator)
 
-        val values = mapOf(
+        val values = mutableMapOf(
             "auth_player_name" to identity.playerName,
             "version_name" to environment.versionName,
             "game_directory" to environment.gameDirectory.absolutePath,
@@ -73,11 +74,22 @@ class LaunchCommandBuilder {
             "resolution_width" to environment.resolutionWidth.toString(),
             "resolution_height" to environment.resolutionHeight.toString()
         )
+        environment.loggingConfigFile?.let { values["path"] = it.absolutePath }
+
+        val loggingArgument = plan.logging?.let { logging ->
+            requireNotNull(environment.loggingConfigFile) {
+                "Logging configuration file is required for ${logging.fileId}"
+            }
+            substitute(logging.argument, values)
+        }
 
         return ResolvedLaunchCommand(
             javaMajorVersion = plan.javaMajorVersion,
             mainClass = plan.mainClass,
-            jvmArguments = plan.jvmArguments.map { substitute(it, values) },
+            jvmArguments = buildList {
+                loggingArgument?.let(::add)
+                addAll(plan.jvmArguments.map { substitute(it, values) })
+            },
             gameArguments = plan.gameArguments.map { substitute(it, values) }
         )
     }
