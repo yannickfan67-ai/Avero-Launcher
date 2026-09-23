@@ -217,7 +217,6 @@ private fun HomeScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         HeroBadge("Native UI")
                         HeroBadge("Verified files")
-                        HeroBadge("Launch rules")
                     }
                 }
             }
