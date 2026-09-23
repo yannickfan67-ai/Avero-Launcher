@@ -35,8 +35,8 @@ data class MinecraftVersionMetadata(
     val assetIndexId: String,
     val assetIndex: DownloadSpec,
     val libraries: List<LibrarySpec>,
-    val gameArguments: List<String>,
-    val jvmArguments: List<String>
+    val gameArguments: List<MinecraftArgument>,
+    val jvmArguments: List<MinecraftArgument>
 )
 
 data class LauncherInstance(
