@@ -68,6 +68,9 @@ import io.yannickfan.avero.minecraft.MinecraftManifestClient
 import io.yannickfan.avero.minecraft.MinecraftVersionMetadata
 import io.yannickfan.avero.minecraft.RuntimeManager
 import io.yannickfan.avero.minecraft.VersionManifest
+import io.yannickfan.avero.runtime.AndroidJavaRuntimeCatalog
+import io.yannickfan.avero.runtime.AndroidJavaRuntimeInstaller
+import io.yannickfan.avero.runtime.RuntimeArch
 import io.yannickfan.avero.ui.theme.AveroTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -143,7 +146,6 @@ fun AveroApp() {
                 AccountState.SignedIn(auth.authenticateMinecraft(microsoftToken))
             } catch (t: Throwable) {
                 t.rethrowIfCancellation()
-                if (t is CancellationException) throw t
                 AccountState.Failed(t.message ?: t::class.java.simpleName)
             }
         }
@@ -160,7 +162,6 @@ fun AveroApp() {
                 ManifestState.Ready(manifest, metadata)
             } catch (t: Throwable) {
                 t.rethrowIfCancellation()
-                if (t is CancellationException) throw t
                 ManifestState.Failed(t.message ?: t::class.java.simpleName)
             }
         }
@@ -171,7 +172,6 @@ fun AveroApp() {
             client.fetchManifest()
         } catch (t: Throwable) {
                 t.rethrowIfCancellation()
-                if (t is CancellationException) throw t
             manifestState = ManifestState.Failed(t.message ?: t::class.java.simpleName)
             return@LaunchedEffect
         }
@@ -182,7 +182,6 @@ fun AveroApp() {
             ManifestState.Ready(manifest, client.fetchVersion(latest))
         } catch (t: Throwable) {
                 t.rethrowIfCancellation()
-                if (t is CancellationException) throw t
             ManifestState.Failed(t.message ?: t::class.java.simpleName)
         }
     }
@@ -366,7 +365,7 @@ private fun HomeScreen(
                 }
             )
         }
-        item { StatusRow("Android Java runtime install", "next") }
+        item { StatusRow("Android Java runtime install", "implemented") }
         item { StatusRow("Actual Java process launch", "next") }
     }
 }
@@ -446,6 +445,8 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
     val scope = rememberCoroutineScope()
     var installing by remember { mutableStateOf(false) }
     var installStatus by remember { mutableStateOf("Idle") }
+    var runtimeInstalling by remember { mutableStateOf(false) }
+    var runtimeStatus by remember { mutableStateOf("Not checked") }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
@@ -467,8 +468,57 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
             item { StatusRow("Target version", m.id) }
             item { StatusRow("Client jar", formatBytes(m.client.size)) }
             item { StatusRow("Asset index", m.assetIndexId) }
+            val runtimePackage = AndroidJavaRuntimeCatalog.find(m.javaMajorVersion)
+            val currentArch = RuntimeArch.current()
+
             item { StatusRow("Libraries", m.libraries.size.toString()) }
-            item { StatusRow("Install state", installStatus) }
+            item { StatusRow("Game install", installStatus) }
+            item {
+                StatusRow(
+                    "Java runtime",
+                    runtimePackage?.let { "Java ${it.majorVersion} · ${it.arch.assetToken}" }
+                        ?: "No package for Java ${m.javaMajorVersion} / ${currentArch?.assetToken ?: "unknown ABI"}"
+                )
+            }
+            item { StatusRow("Runtime install", runtimeStatus) }
+
+            item {
+                Button(
+                    enabled = !runtimeInstalling && runtimePackage != null,
+                    onClick = {
+                        val pkg = runtimePackage ?: return@Button
+                        scope.launch {
+                            runtimeInstalling = true
+                            runtimeStatus = "Starting…"
+                            try {
+                                val installed = AndroidJavaRuntimeInstaller().install(
+                                    runtimePackage = pkg,
+                                    root = File(context.filesDir, "runtimes")
+                                ) { progress ->
+                                    runtimeStatus = when {
+                                        progress.totalBytes != null && progress.totalBytes > 0 ->
+                                            "${progress.stage} · ${formatBytes(progress.downloadedBytes)}/${formatBytes(progress.totalBytes)}"
+                                        else -> "${progress.stage} · ${progress.message}"
+                                    }
+                                }
+                                runtimeStatus =
+                                    "Ready · ${installed.javaExecutable.absolutePath}"
+                            } catch (t: Throwable) {
+                                t.rethrowIfCancellation()
+                                runtimeStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
+                            } finally {
+                                runtimeInstalling = false
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.Rounded.Storage, null)
+                    Text(
+                        if (runtimeInstalling) " Installing Java…"
+                        else " Install Java ${runtimePackage?.majorVersion ?: m.javaMajorVersion}"
+                    )
+                }
+            }
 
             item {
                 Button(
@@ -499,7 +549,6 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                                     "Ready · ${result.downloadedFiles} core files + $assetCount assets"
                             } catch (t: Throwable) {
                 t.rethrowIfCancellation()
-                if (t is CancellationException) throw t
                                 installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
                             } finally {
                                 installing = false
@@ -533,7 +582,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
             FeatureCard(
                 Icons.Rounded.Storage,
                 "Java runtimes",
-                "Runtime requirements are detected; Android-compatible runtime packs still need installation support."
+                "Android OpenJDK runtime packages can now be downloaded, SHA-256 verified and extracted for the selected Minecraft version."
             )
         }
     }
