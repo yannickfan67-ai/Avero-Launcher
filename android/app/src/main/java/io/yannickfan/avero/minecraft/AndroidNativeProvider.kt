@@ -27,7 +27,7 @@ data class AndroidNativeArtifact(
     }
 
     private companion object {
-        val SAFE_ID = Regex("[A-Za-z0-9._-]+")
+        val SAFE_ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]*")
         val SAFE_FILE_NAME = Regex("[A-Za-z0-9][A-Za-z0-9._-]*")
     }
 }
@@ -39,11 +39,11 @@ data class AndroidNativeBundle(
     val artifacts: List<AndroidNativeArtifact>
 ) {
     init {
-        require(providerId.matches(Regex("[A-Za-z0-9._-]+"))) {
+        require(providerId.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]*"))) {
             "Invalid Android native provider id: $providerId"
         }
         require(minecraftVersion.isNotBlank()) { "Minecraft version is required" }
-        require(abi.matches(Regex("[A-Za-z0-9._-]+"))) {
+        require(abi.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]*"))) {
             "Invalid Android native ABI: $abi"
         }
         require(artifacts.isNotEmpty()) { "Android native bundle must contain artifacts" }
