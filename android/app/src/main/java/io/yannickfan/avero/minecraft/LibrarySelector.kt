@@ -51,17 +51,19 @@ internal fun LibrarySpec.isDesktopNativeArtifact(): Boolean {
     val artifact = parts[1].lowercase()
     val classifier = parts[3].substringBefore('@').lowercase()
 
-    if (classifier.startsWith("natives-")) return true
+    fun isDesktopPlatform(value: String): Boolean =
+        value == "linux" ||
+            value.startsWith("linux-") ||
+            value == "windows" ||
+            value.startsWith("windows-") ||
+            value == "osx" ||
+            value.startsWith("osx-") ||
+            value == "macos" ||
+            value.startsWith("macos-")
 
-    val desktopPlatformClassifier =
-        classifier == "linux" ||
-            classifier.startsWith("linux-") ||
-            classifier == "windows" ||
-            classifier.startsWith("windows-") ||
-            classifier == "osx" ||
-            classifier.startsWith("osx-") ||
-            classifier == "macos" ||
-            classifier.startsWith("macos-")
+    if (classifier.startsWith("natives-")) {
+        return isDesktopPlatform(classifier.removePrefix("natives-"))
+    }
 
-    return desktopPlatformClassifier && artifact.contains("native")
+    return isDesktopPlatform(classifier) && artifact.contains("native")
 }
