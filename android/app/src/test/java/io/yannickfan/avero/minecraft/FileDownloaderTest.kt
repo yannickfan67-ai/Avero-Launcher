@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -49,7 +50,7 @@ class FileDownloaderTest {
             }
         }
 
-        val root = createTempDir(prefix = "avero-download-test-")
+        val root = Files.createTempDirectory("avero-download-test-").toFile()
         server.start()
         try {
             val destination = File(root, "payload.bin")
@@ -92,7 +93,7 @@ class FileDownloaderTest {
             exchange.close()
         }
 
-        val root = createTempDir(prefix = "avero-download-test-")
+        val root = Files.createTempDirectory("avero-download-test-").toFile()
         server.start()
         try {
             val destination = File(root, "payload.bin")
@@ -128,7 +129,7 @@ class FileDownloaderTest {
             exchange.close()
         }
 
-        val root = createTempDir(prefix = "avero-download-test-")
+        val root = Files.createTempDirectory("avero-download-test-").toFile()
         server.start()
         try {
             var failed = false
@@ -169,7 +170,7 @@ class FileDownloaderTest {
             exchange.close()
         }
 
-        val root = createTempDir(prefix = "avero-download-test-")
+        val root = Files.createTempDirectory("avero-download-test-").toFile()
         server.start()
         try {
             val destination = File(root, "payload.bin")
