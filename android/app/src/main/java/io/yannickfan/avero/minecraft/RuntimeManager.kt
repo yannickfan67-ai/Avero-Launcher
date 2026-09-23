@@ -1,9 +1,14 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.runtime.AndroidJavaRuntimeCatalog
+import io.yannickfan.avero.runtime.RuntimeArch
+import java.io.File
+
 data class RuntimeRequirement(
     val javaMajorVersion: Int,
     val architecture: String,
-    val state: RuntimeState
+    val state: RuntimeState,
+    val javaExecutable: File? = null
 )
 
 enum class RuntimeState {
@@ -15,19 +20,37 @@ enum class RuntimeState {
 class RuntimeManager {
     fun requirementFor(
         metadata: MinecraftVersionMetadata,
-        architecture: String = System.getProperty("os.arch") ?: "unknown"
+        runtimeRoot: File? = null,
+        arch: RuntimeArch? = RuntimeArch.current()
     ): RuntimeRequirement {
         val major = metadata.javaMajorVersion
-        val supportedMajor = major in setOf(8, 17, 21)
-        val supportedArch = architecture.contains("aarch64", ignoreCase = true) ||
-            architecture.contains("arm64", ignoreCase = true) ||
-            architecture.contains("x86_64", ignoreCase = true) ||
-            architecture.contains("amd64", ignoreCase = true)
+        if (arch == null) {
+            return RuntimeRequirement(
+                javaMajorVersion = major,
+                architecture = "unknown",
+                state = RuntimeState.UNSUPPORTED
+            )
+        }
+
+        val runtimePackage = AndroidJavaRuntimeCatalog.find(major, arch)
+            ?: return RuntimeRequirement(
+                javaMajorVersion = major,
+                architecture = arch.assetToken,
+                state = RuntimeState.UNSUPPORTED
+            )
+
+        val javaExecutable = runtimeRoot?.let { root ->
+            File(File(root, runtimePackage.id), "bin/java")
+        }
+        val available = javaExecutable?.let {
+            it.isFile && it.canExecute()
+        } == true
 
         return RuntimeRequirement(
             javaMajorVersion = major,
-            architecture = architecture,
-            state = if (supportedMajor && supportedArch) RuntimeState.NEEDS_INSTALL else RuntimeState.UNSUPPORTED
+            architecture = arch.assetToken,
+            state = if (available) RuntimeState.AVAILABLE else RuntimeState.NEEDS_INSTALL,
+            javaExecutable = javaExecutable
         )
     }
 }
