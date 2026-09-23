@@ -66,7 +66,7 @@ class LaunchPlanner(
     }
 
     private fun libraryClasspathPath(path: String): String {
-        val normalized = path.replace('\\\\', '/').trimStart('/')
+        val normalized = path.replace('\\', '/').trimStart('/')
         require(normalized.isNotBlank()) { "Library artifact path is empty" }
         require(normalized.split('/').none { it == ".." }) {
             "Library artifact path escapes the managed library directory: $path"
