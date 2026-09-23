@@ -212,7 +212,8 @@ fun AveroApp() {
                         selected = selected == index,
                         onClick = { selected = index },
                         icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) }
+                        label = { Text(item.label) },
+                        alwaysShowLabel = selected == index
                     )
                 }
             }
@@ -256,16 +257,38 @@ private fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text(
-                "Minecraft: Java Edition on Android.",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Avero now reads Mojang's official version manifest and version metadata directly.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(Modifier.fillMaxWidth().padding(24.dp)) {
+                    Text(
+                        "AVERO · JAVA EDITION",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Minecraft Java,\nmade for Android.",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Official metadata, verified installs, Microsoft sign-in and managed Java runtimes in one native launcher.",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HeroBadge("Native UI")
+                        HeroBadge("Verified installs")
+                    }
+                }
+            }
         }
 
         item {
@@ -302,7 +325,12 @@ private fun HomeScreen(
                         )
                     )
 
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
                         Column(Modifier.fillMaxWidth().padding(18.dp)) {
                             Text("Latest official release", style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.height(6.dp))
@@ -349,11 +377,11 @@ private fun HomeScreen(
                     Modifier.weight(1f)
                 ) { navigate(3) }
                 QuickTile(
-                    "Mods & loaders",
-                    "Fabric / Forge / NeoForge",
-                    Icons.Rounded.Extension,
+                    "Java runtime",
+                    "Install & test Java",
+                    Icons.Rounded.Storage,
                     Modifier.weight(1f)
-                ) { }
+                ) { navigate(2) }
             }
         }
 
@@ -373,7 +401,27 @@ private fun HomeScreen(
             )
         }
         item { StatusRow("Android Java runtime install", "implemented") }
-        item { StatusRow("Actual Java process launch", "next") }
+        item { StatusRow("Isolated JVM probe", "implemented") }
+        item { StatusRow("Minecraft + LWJGL launch", "in progress") }
+    }
+}
+
+@Composable
+private fun HeroBadge(text: String) {
+    Box(
+        Modifier
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                RoundedCornerShape(999.dp)
+            )
+            .padding(horizontal = 11.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -387,6 +435,7 @@ private fun QuickTile(
 ) {
     Card(
         modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(Modifier.padding(16.dp)) {
