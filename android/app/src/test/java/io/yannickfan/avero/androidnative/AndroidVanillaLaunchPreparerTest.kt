@@ -36,19 +36,19 @@ class AndroidVanillaLaunchPreparerTest {
                     LibrarySpec(
                         name = "org.lwjgl:lwjgl:3.4.1",
                         artifact = dummy.copy(
-                            path = "libraries/org/lwjgl/lwjgl/3.4.1/lwjgl.jar"
+                            path = "org/lwjgl/lwjgl/3.4.1/lwjgl.jar"
                         )
                     ),
                     LibrarySpec(
                         name = "example:allowed:1",
                         artifact = dummy.copy(
-                            path = "libraries/example/allowed.jar"
+                            path = "example/allowed.jar"
                         )
                     ),
                     LibrarySpec(
                         name = "example:blocked:1",
                         artifact = dummy.copy(
-                            path = "libraries/example/blocked.jar"
+                            path = "example/blocked.jar"
                         ),
                         rules = listOf(
                             RuleSpec(action = RuleAction.DISALLOW)
