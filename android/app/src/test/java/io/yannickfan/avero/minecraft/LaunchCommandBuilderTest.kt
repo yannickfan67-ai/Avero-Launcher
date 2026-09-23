@@ -28,7 +28,9 @@ class LaunchCommandBuilderTest {
                 "--username",
                 variable("auth_player_name"),
                 "--uuid",
-                variable("auth_uuid")
+                variable("auth_uuid"),
+                "--userProperties",
+                variable("user_properties")
             ),
             logging = LoggingSpec(
                 argument = "-Dlog4j.configurationFile=" + variable("path"),
@@ -61,7 +63,17 @@ class LaunchCommandBuilderTest {
         assertEquals("net.minecraft.client.main.Main", command.mainClass)
         assertTrue(command.jvmArguments.first().contains("log_configs"))
         assertTrue(command.jvmArguments.joinToString(" ").contains("libraries/a.jar"))
-        assertEquals(listOf("--username", "NoxVala", "--uuid", "1234"), command.gameArguments)
+        assertEquals(
+            listOf(
+                "--username",
+                "NoxVala",
+                "--uuid",
+                "1234",
+                "--userProperties",
+                "{}"
+            ),
+            command.gameArguments
+        )
     }
 
     @Test
