@@ -2,6 +2,7 @@ package io.yannickfan.avero
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -247,6 +248,8 @@ private fun HomeScreen(
     onRefresh: () -> Unit,
     navigate: (Int) -> Unit
 ) {
+    val context = LocalContext.current
+
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -286,7 +289,12 @@ private fun HomeScreen(
                 }
                 is ManifestState.Ready -> {
                     val metadata = state.latestMetadata
-                    val runtime = RuntimeManager().requirementFor(metadata)
+                    val abi = Build.SUPPORTED_ABIS.firstOrNull()
+                        ?: System.getProperty("os.arch")
+                        ?: "unknown"
+                    val runtime = RuntimeManager(
+                        managedRoot = File(context.filesDir, "minecraft/runtimes")
+                    ).requirementFor(metadata, abi)
                     val plan = LaunchPlanner().createVanillaPlan(
                         metadata = metadata,
                         instance = LauncherInstance(
