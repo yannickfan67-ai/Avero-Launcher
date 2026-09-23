@@ -9,8 +9,10 @@
         android:theme="@style/Theme.Avero">
         <activity
             android:name=".game.GameLaunchActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize"
             android:exported="false"
-            android:process=":game" />
+            android:process=":game"
+            android:screenOrientation="landscape" />
 
         <activity
             android:name=".runtime.JvmProbeActivity"
