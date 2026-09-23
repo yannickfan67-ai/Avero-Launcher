@@ -52,7 +52,10 @@ class LaunchPlannerTest {
             androidNativeProvider = provider
         )
 
-        assertEquals(provider.classpathEntry, plan.classpathEntries.first())
+        assertEquals(
+            provider.classpathEntries,
+            plan.classpathEntries.take(provider.classpathEntries.size)
+        )
         assertEquals(provider, plan.androidNativeProvider)
         assertTrue(plan.nativeArchives.isEmpty())
     }
