@@ -24,7 +24,7 @@ It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. 
 
 ## Current state
 
-The repository currently contains the native Android launcher shell, official Mojang metadata parsing, verified game-file downloading, asset installation and CI APK builds. Java runtime installation, Microsoft authentication, native rendering support and the final launch process are still under active development.
+The repository currently contains the native Android launcher shell, official Mojang metadata parsing, verified/resumable game-file and asset downloads, Mojang rule/argument handling, Microsoft device-code authentication through Minecraft profile/entitlement lookup, managed Android Java runtime installation, and an isolated native JVM probe. CI runs unit tests and produces a debug APK. The remaining major launch blocker is Android-compatible Minecraft/LWJGL native rendering and end-to-end game launch validation.
 
 The Android source lives in [`android/`](android/).
 
@@ -53,7 +53,7 @@ Avero can install Android OpenJDK runtime packages for Java 8, 17, 21 and 25 (de
 
 The runtime binaries are **not MIT-licensed Avero code**. See [`THIRD_PARTY.md`](THIRD_PARTY.md) for upstream and license information.
 
-The runtime installer does not by itself make Minecraft render on Android: the remaining launch milestone requires the Android JVM/native launch bridge and the LWJGL/renderer compatibility layer.
+Avero now includes a native JVM bridge and an isolated Java runtime probe, so installed runtimes can be exercised without risking the main launcher process. This still does not prove Minecraft rendering: the remaining launch milestone is the Android-compatible LWJGL/native renderer layer and end-to-end game launch validation.
 
 ## Planned architecture
 
