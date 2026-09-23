@@ -25,6 +25,7 @@ class GameInstaller(
         metadata: MinecraftVersionMetadata,
         root: File,
         context: RuleContext = MinecraftPlatform.androidRuleContext(),
+        nativeClassifierPolicy: NativeClassifierPolicy = NativeClassifierPolicy.DISABLED,
         onProgress: (InstallProgress) -> Unit = {}
     ): CoreInstallResult {
         require(summary.id == metadata.id) {
@@ -32,8 +33,13 @@ class GameInstaller(
         }
 
         val layout = InstanceLayout(root)
-        val allowedLibraries = metadata.libraries.filter { rules.isAllowed(it.rules, context) }
-        val libraries = allowedLibraries.mapNotNull { lib ->
+        val librarySelection = LibrarySelector(rules).select(
+            libraries = metadata.libraries,
+            context = context,
+            nativeClassifierPolicy = nativeClassifierPolicy
+        )
+        val selectedLibraries = librarySelection.effective
+        val libraries = selectedLibraries.mapNotNull { lib ->
             lib.artifact?.path?.let { path -> Triple(lib.name, lib.artifact, layout.library(path)) }
         }
 
@@ -76,8 +82,8 @@ class GameInstaller(
         return CoreInstallResult(
             versionId = metadata.id,
             downloadedFiles = tasks.size,
-            skippedLibrariesWithoutArtifact = allowedLibraries.count { it.artifact?.path == null },
-            skippedLibrariesByRule = metadata.libraries.size - allowedLibraries.size,
+            skippedLibrariesWithoutArtifact = selectedLibraries.count { it.artifact?.path == null },
+            skippedLibrariesByRule = librarySelection.skippedByRule,
             root = root
         )
     }
