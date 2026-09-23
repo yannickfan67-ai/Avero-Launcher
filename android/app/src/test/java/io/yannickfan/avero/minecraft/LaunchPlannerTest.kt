@@ -59,4 +59,61 @@ class LaunchPlannerTest {
         assertEquals(provider, plan.androidNativeProvider)
         assertTrue(plan.nativeArchives.isEmpty())
     }
+    @Test
+    fun androidPlanDoesNotPutSeparateDesktopNativeJarOnClasspath() {
+        val dummy = DownloadSpec(
+            url = "https://example.invalid/file",
+            sha1 = null,
+            size = 1
+        )
+        val linuxRule = listOf(
+            RuleSpec(
+                action = RuleAction.ALLOW,
+                os = OsRule(name = "linux")
+            )
+        )
+        val metadata = MinecraftVersionMetadata(
+            id = "1.21.4",
+            type = "release",
+            mainClass = "net.minecraft.client.main.Main",
+            javaMajorVersion = 21,
+            client = dummy,
+            assetIndexId = "19",
+            assetIndex = dummy,
+            libraries = listOf(
+                LibrarySpec(
+                    name = "org.lwjgl:lwjgl:3.3.3",
+                    artifact = dummy.copy(
+                        path = "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
+                    )
+                ),
+                LibrarySpec(
+                    name = "org.lwjgl:lwjgl:3.3.3:natives-linux",
+                    artifact = dummy.copy(
+                        path = "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-linux.jar"
+                    ),
+                    rules = linuxRule
+                )
+            ),
+            logging = null,
+            gameArguments = emptyList(),
+            jvmArguments = emptyList()
+        )
+
+        val plan = LaunchPlanner().createVanillaPlan(
+            metadata = metadata,
+            instance = LauncherInstance("test", metadata.id),
+            context = RuleContext(osName = "linux", osArch = "aarch64")
+        )
+
+        assertTrue(
+            plan.classpathEntries.contains(
+                "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
+            )
+        )
+        assertTrue(
+            plan.classpathEntries.none { it.contains("natives-linux") }
+        )
+    }
+
 }
