@@ -100,6 +100,25 @@ class AndroidNativeProviderTest {
         }
     }
 
+
+    @Test
+    fun dotDotInstanceNameCannotEscapeManagedDirectory() {
+        val root = Files.createTempDirectory("avero-layout-test").toFile()
+        try {
+            val layout = InstanceLayout(root)
+            val game = layout.gameDirectory("..").canonicalFile
+            val natives = layout.nativesDirectory("..").canonicalFile
+            val instancesRoot = File(root, "instances").canonicalFile
+
+            assertTrue(game.path.startsWith(instancesRoot.path + File.separator))
+            assertTrue(natives.path.startsWith(instancesRoot.path + File.separator))
+            assertEquals(File(instancesRoot, "_/game").canonicalFile, game)
+            assertEquals(File(instancesRoot, "_/natives").canonicalFile, natives)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun artifact(
         id: String,
         abi: String,
