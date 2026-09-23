@@ -56,6 +56,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.yannickfan.avero.androidnative.AndroidNativeProviderCatalog
+import io.yannickfan.avero.androidnative.AndroidNativeProviderInstaller
 import io.yannickfan.avero.auth.AuthenticatedMinecraftAccount
 import io.yannickfan.avero.auth.DeviceCodeInfo
 import io.yannickfan.avero.auth.MicrosoftMinecraftAuthClient
@@ -316,13 +318,19 @@ private fun HomeScreen(
                         metadata = metadata,
                         runtimeRoot = File(context.filesDir, "runtimes")
                     )
+                    val nativeProviderPlan = RuntimeArch.current()
+                        ?.let { arch ->
+                            AndroidNativeProviderCatalog.detect(metadata, arch)
+                        }
+                        ?.let(AndroidNativeProviderCatalog::plan)
                     val plan = LaunchPlanner().createVanillaPlan(
                         metadata = metadata,
                         instance = LauncherInstance(
                             name = "Latest release",
                             versionId = metadata.id,
                             javaMajorVersion = metadata.javaMajorVersion
-                        )
+                        ),
+                        androidNativeProvider = nativeProviderPlan
                     )
 
                     Card(
@@ -503,6 +511,8 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
     var installStatus by remember { mutableStateOf("Idle") }
     var runtimeInstalling by remember { mutableStateOf(false) }
     var runtimeStatus by remember { mutableStateOf("Not checked") }
+    var nativeInstalling by remember { mutableStateOf(false) }
+    var nativeStatus by remember { mutableStateOf("Not checked") }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
@@ -526,6 +536,20 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
             item { StatusRow("Asset index", m.assetIndexId) }
             val runtimePackage = AndroidJavaRuntimeCatalog.find(m.javaMajorVersion)
             val currentArch = RuntimeArch.current()
+            val nativeProviderPackage = currentArch?.let { arch ->
+                AndroidNativeProviderCatalog.detect(m, arch)
+            }
+            val nativeProviderPlan = nativeProviderPackage
+                ?.let(AndroidNativeProviderCatalog::plan)
+            val nativeProviderInstalled = nativeProviderPackage?.let { pkg ->
+                AndroidNativeProviderInstaller().findInstalled(
+                    pkg = pkg,
+                    providerRoot = File(
+                        context.filesDir,
+                        "minecraft/${nativeProviderPlan?.nativeDirectory?.substringBeforeLast('/')}"
+                    )
+                )
+            }
             val runtimeRequirement = RuntimeManager().requirementFor(
                 metadata = m,
                 runtimeRoot = File(context.filesDir, "runtimes")
@@ -541,6 +565,19 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                 )
             }
             item { StatusRow("Runtime install", runtimeStatus) }
+            item {
+                StatusRow(
+                    "Android LWJGL",
+                    when {
+                        nativeProviderPackage == null -> "No pinned provider for this LWJGL"
+                        nativeProviderInstalled != null ->
+                            "Ready · ${nativeProviderPackage.lwjglVersion} · ${nativeProviderPackage.arch.assetToken}"
+                        else ->
+                            "Available · ${nativeProviderPackage.lwjglVersion} · ${nativeProviderPackage.arch.assetToken}"
+                    }
+                )
+            }
+            item { StatusRow("Native provider install", nativeStatus) }
 
             item {
                 Button(
@@ -600,6 +637,45 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
 
             item {
                 Button(
+                    enabled = !nativeInstalling && nativeProviderPackage != null,
+                    onClick = {
+                        val pkg = nativeProviderPackage ?: return@Button
+                        scope.launch {
+                            nativeInstalling = true
+                            nativeStatus = "Starting…"
+                            try {
+                                val installed = AndroidNativeProviderInstaller().install(
+                                    pkg = pkg,
+                                    minecraftRoot = File(context.filesDir, "minecraft")
+                                ) { progress ->
+                                    nativeStatus = when {
+                                        progress.totalBytes != null && progress.totalBytes > 0 ->
+                                            "${progress.stage} · ${formatBytes(progress.downloadedBytes)}/${formatBytes(progress.totalBytes)}"
+                                        else -> "${progress.stage} · ${progress.message}"
+                                    }
+                                }
+                                nativeStatus =
+                                    "Ready · ${installed.nativeLibraries.size} native libraries"
+                            } catch (t: Throwable) {
+                                t.rethrowIfCancellation()
+                                nativeStatus =
+                                    "Failed: ${t.message ?: t::class.java.simpleName}"
+                            } finally {
+                                nativeInstalling = false
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.Rounded.Extension, null)
+                    Text(
+                        if (nativeInstalling) " Installing Android LWJGL…"
+                        else " Install Android LWJGL provider"
+                    )
+                }
+            }
+
+            item {
+                Button(
                     enabled = !installing && summary != null,
                     onClick = {
                         if (summary == null) return@Button
@@ -626,7 +702,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                                 installStatus =
                                     "Ready · ${result.downloadedFiles} core files + $assetCount assets"
                             } catch (t: Throwable) {
-                t.rethrowIfCancellation()
+                                t.rethrowIfCancellation()
                                 installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
                             } finally {
                                 installing = false
@@ -661,6 +737,13 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                 Icons.Rounded.Storage,
                 "Java runtimes",
                 "Android OpenJDK runtime packages can now be downloaded, SHA-256 verified and extracted for the selected Minecraft version."
+            )
+        }
+        item {
+            FeatureCard(
+                Icons.Rounded.Extension,
+                "Android LWJGL provider",
+                "Pinned third-party LWJGL bridge AARs are verified as Git blobs, then only the provider classes and current-ABI native libraries are installed."
             )
         }
     }
