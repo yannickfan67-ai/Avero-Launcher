@@ -14,8 +14,12 @@ class LaunchPlanner(
         }
 
         val classpath = buildList {
-            metadata.libraries.mapNotNullTo(this) { it.artifact?.path }
-            add("versions/" + metadata.id + "/" + metadata.id + ".jar")
+            metadata.libraries.mapNotNullTo(this) { library ->
+                library.artifact?.path?.let { path ->
+                    context.librariesDirectory.trimEnd('/') + "/" + path
+                }
+            }
+            add(context.clientJarPath)
         }
 
         val variables = buildMap {
