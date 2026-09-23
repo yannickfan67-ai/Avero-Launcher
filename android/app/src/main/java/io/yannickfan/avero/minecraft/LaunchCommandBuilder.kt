@@ -97,21 +97,8 @@ class LaunchCommandBuilder {
     private fun substitute(value: String, variables: Map<String, String>): String {
         var result = value
         for ((key, replacement) in variables) {
-            result = result.replace("${'
-        }
-
-        val unresolved = PLACEHOLDER.findAll(result).map { it.value }.toList()
-        require(unresolved.isEmpty()) {
-            "Unresolved Minecraft launch variables in '$value': ${unresolved.joinToString()}"
-        }
-        return result
-    }
-
-    companion object {
-        private val PLACEHOLDER = Regex("""\$\{[^}]+}""")
-    }
-}
-}{$key}", replacement)
+            val token = 36.toChar().toString() + "{" + key + "}"
+            result = result.replace(token, replacement)
         }
 
         val unresolved = PLACEHOLDER.findAll(result).map { it.value }.toList()
