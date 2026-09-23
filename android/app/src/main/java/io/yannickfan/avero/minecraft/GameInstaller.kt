@@ -12,16 +12,19 @@ data class CoreInstallResult(
     val versionId: String,
     val downloadedFiles: Int,
     val skippedLibrariesWithoutArtifact: Int,
+    val skippedLibrariesByRule: Int,
     val root: File
 )
 
 class GameInstaller(
-    private val downloader: FileDownloader = FileDownloader()
+    private val downloader: FileDownloader = FileDownloader(),
+    private val rules: RuleEvaluator = RuleEvaluator()
 ) {
     suspend fun installVanillaCore(
         summary: MinecraftVersionSummary,
         metadata: MinecraftVersionMetadata,
         root: File,
+        context: RuleContext = MinecraftPlatform.androidRuleContext(),
         onProgress: (InstallProgress) -> Unit = {}
     ): CoreInstallResult {
         require(summary.id == metadata.id) {
@@ -29,7 +32,8 @@ class GameInstaller(
         }
 
         val layout = InstanceLayout(root)
-        val libraries = metadata.libraries.mapNotNull { lib ->
+        val allowedLibraries = metadata.libraries.filter { rules.isAllowed(it.rules, context) }
+        val libraries = allowedLibraries.mapNotNull { lib ->
             lib.artifact?.path?.let { path -> Triple(lib.name, lib.artifact, layout.library(path)) }
         }
 
@@ -54,7 +58,7 @@ class GameInstaller(
 
         tasks.forEachIndexed { index, (label, spec, destination) ->
             onProgress(InstallProgress(index, tasks.size, label))
-            if (!isAlreadyValid(destination, spec)) {
+            if (!downloader.isValid(spec, destination)) {
                 downloader.download(spec, destination)
             }
             onProgress(InstallProgress(index + 1, tasks.size, label))
@@ -63,14 +67,9 @@ class GameInstaller(
         return CoreInstallResult(
             versionId = metadata.id,
             downloadedFiles = tasks.size,
-            skippedLibrariesWithoutArtifact = metadata.libraries.size - libraries.size,
+            skippedLibrariesWithoutArtifact = allowedLibraries.count { it.artifact?.path == null },
+            skippedLibrariesByRule = metadata.libraries.size - allowedLibraries.size,
             root = root
         )
-    }
-
-    private fun isAlreadyValid(file: File, spec: DownloadSpec): Boolean {
-        if (!file.isFile) return false
-        val expectedSize = spec.size ?: return false
-        return expectedSize == file.length()
     }
 }
