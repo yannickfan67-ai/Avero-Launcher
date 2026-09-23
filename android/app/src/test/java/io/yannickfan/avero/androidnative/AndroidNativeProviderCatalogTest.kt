@@ -22,11 +22,19 @@ class AndroidNativeProviderCatalogTest {
         assertEquals("3.4.1", pkg?.lwjglVersion)
         assertEquals(
             "523e976c9fa282a63407e39fbe8d7c846efe0778",
-            pkg?.download?.gitBlobSha1
+            pkg?.nativeArchive?.gitBlobSha1
         )
         assertEquals(
             AndroidNativeProviderPackage.UPSTREAM_COMMIT,
             pkg?.upstreamCommit
+        )
+        assertEquals(14, pkg?.javaComponents?.size)
+        assertEquals(
+            "f77c2f24ed0f8034d98195a3e2092dfc5e64d293",
+            pkg?.javaComponents
+                ?.firstOrNull { it.fileName == "lwjgl.jar" }
+                ?.download
+                ?.gitBlobSha1
         )
     }
 
