@@ -1,5 +1,7 @@
 package io.yannickfan.avero
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -54,6 +56,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.yannickfan.avero.auth.AuthenticatedMinecraftAccount
+import io.yannickfan.avero.auth.DeviceCodeInfo
+import io.yannickfan.avero.auth.MicrosoftMinecraftAuthClient
 import io.yannickfan.avero.minecraft.AssetInstaller
 import io.yannickfan.avero.minecraft.GameInstaller
 import io.yannickfan.avero.minecraft.InstanceLayout
@@ -86,6 +91,15 @@ private sealed interface ManifestState {
     data class Failed(val message: String) : ManifestState
 }
 
+private sealed interface AccountState {
+    data object Unconfigured : AccountState
+    data object SignedOut : AccountState
+    data class AwaitingCode(val info: DeviceCodeInfo) : AccountState
+    data object Completing : AccountState
+    data class SignedIn(val account: AuthenticatedMinecraftAccount) : AccountState
+    data class Failed(val message: String) : AccountState
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AveroApp() {
@@ -93,12 +107,44 @@ fun AveroApp() {
         NavItem("Home", Icons.Rounded.Home),
         NavItem("Versions", Icons.Rounded.Storage),
         NavItem("Downloads", Icons.Rounded.Download),
+        NavItem("Accounts", Icons.Rounded.AccountCircle),
         NavItem("Settings", Icons.Rounded.Settings)
     )
     var selected by remember { mutableIntStateOf(0) }
     var manifestState by remember { mutableStateOf<ManifestState>(ManifestState.Loading) }
     val client = remember { MinecraftManifestClient() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val authClient = remember {
+        BuildConfig.MICROSOFT_CLIENT_ID
+            .takeIf { it.isNotBlank() }
+            ?.let(::MicrosoftMinecraftAuthClient)
+    }
+    var accountState by remember {
+        mutableStateOf<AccountState>(
+            if (authClient == null) AccountState.Unconfigured else AccountState.SignedOut
+        )
+    }
+
+    fun startMicrosoftSignIn() {
+        val auth = authClient
+        if (auth == null) {
+            accountState = AccountState.Unconfigured
+            return
+        }
+
+        scope.launch {
+            accountState = try {
+                val info = auth.requestDeviceCode()
+                accountState = AccountState.AwaitingCode(info)
+                val microsoftToken = auth.awaitMicrosoftToken(info)
+                accountState = AccountState.Completing
+                AccountState.SignedIn(auth.authenticateMinecraft(microsoftToken))
+            } catch (t: Throwable) {
+                AccountState.Failed(t.message ?: t::class.java.simpleName)
+            }
+        }
+    }
 
     fun refreshManifest() {
         manifestState = ManifestState.Loading
@@ -163,9 +209,22 @@ fun AveroApp() {
         }
     ) { padding ->
         when (selected) {
-            0 -> HomeScreen(padding, manifestState, onRefresh = ::refreshManifest) { selected = it }
+            0 -> HomeScreen(
+                padding,
+                manifestState,
+                accountState,
+                onRefresh = ::refreshManifest
+            ) { selected = it }
             1 -> VersionsScreen(padding, manifestState)
             2 -> DownloadsScreen(padding, manifestState)
+            3 -> AccountsScreen(
+                padding = padding,
+                state = accountState,
+                onSignIn = ::startMicrosoftSignIn,
+                onOpenVerification = { uri ->
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
+                }
+            )
             else -> SettingsScreen(padding, manifestState)
         }
     }
@@ -175,6 +234,7 @@ fun AveroApp() {
 private fun HomeScreen(
     padding: PaddingValues,
     state: ManifestState,
+    accountState: AccountState,
     onRefresh: () -> Unit,
     navigate: (Int) -> Unit
 ) {
@@ -272,7 +332,7 @@ private fun HomeScreen(
                     "Microsoft sign-in",
                     Icons.Rounded.AccountCircle,
                     Modifier.weight(1f)
-                ) { }
+                ) { navigate(3) }
                 QuickTile(
                     "Mods & loaders",
                     "Fabric / Forge / NeoForge",
@@ -287,7 +347,16 @@ private fun HomeScreen(
         item { StatusRow("Version metadata parser", if (state is ManifestState.Ready) "working" else "pending") }
         item { StatusRow("Verified file downloader", "implemented") }
         item { StatusRow("Vanilla launch-plan builder", "implemented") }
-        item { StatusRow("Microsoft authentication", "next") }
+        item {
+            StatusRow(
+                "Microsoft authentication",
+                when (accountState) {
+                    is AccountState.SignedIn -> "signed in"
+                    AccountState.Unconfigured -> "client ID required"
+                    else -> "implemented"
+                }
+            )
+        }
         item { StatusRow("Android Java runtime install", "next") }
         item { StatusRow("Actual Java process launch", "next") }
     }
@@ -454,6 +523,154 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                 Icons.Rounded.Storage,
                 "Java runtimes",
                 "Runtime requirements are detected; Android-compatible runtime packs still need installation support."
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountsScreen(
+    padding: PaddingValues,
+    state: AccountState,
+    onSignIn: () -> Unit,
+    onOpenVerification: (String) -> Unit
+) {
+    LazyColumn(
+        Modifier.fillMaxSize().padding(padding),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Text(
+                "Accounts",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Microsoft public-client sign-in → Xbox Live → XSTS → Minecraft Services.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        when (state) {
+            AccountState.Unconfigured -> {
+                item {
+                    FeatureCard(
+                        Icons.Rounded.AccountCircle,
+                        "Microsoft client ID required",
+                        "Build Avero with AVERO_MS_CLIENT_ID set to the Application (client) ID of Avero's Microsoft public-client app registration. No client secret is embedded."
+                    )
+                }
+            }
+
+            AccountState.SignedOut -> {
+                item {
+                    Button(onClick = onSignIn) {
+                        Icon(Icons.Rounded.AccountCircle, null)
+                        Text(" Sign in with Microsoft")
+                    }
+                }
+            }
+
+            is AccountState.AwaitingCode -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Enter this Microsoft code", fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                state.info.userCode,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Avero is waiting for Microsoft authorization. The code expires automatically.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Button(
+                                onClick = {
+                                    onOpenVerification(state.info.verificationUri)
+                                }
+                            ) {
+                                Text("Open Microsoft sign-in")
+                            }
+                        }
+                    }
+                }
+            }
+
+            AccountState.Completing -> {
+                item {
+                    StatusCard(
+                        "Finishing Minecraft sign-in",
+                        "Exchanging Xbox Live / XSTS tokens and checking the Minecraft profile…"
+                    )
+                }
+            }
+
+            is AccountState.SignedIn -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Signed in", style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                state.account.profile.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                state.account.profile.id,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            StatusRow(
+                                "Minecraft entitlements",
+                                state.account.entitlements.names.size.toString()
+                            )
+                        }
+                    }
+                }
+            }
+
+            is AccountState.Failed -> {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Sign-in failed", fontWeight = FontWeight.Bold)
+                            Text(
+                                state.message,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            OutlinedButton(onClick = onSignIn) {
+                                Text("Try again")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Avero never asks for your Microsoft password directly. Authentication happens through Microsoft's device-code flow.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }
