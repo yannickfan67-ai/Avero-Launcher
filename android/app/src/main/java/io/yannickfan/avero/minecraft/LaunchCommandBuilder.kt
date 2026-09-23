@@ -14,6 +14,7 @@ data class LaunchIdentity(
 data class LaunchEnvironment(
     val versionName: String,
     val versionType: String,
+    val minecraftRoot: File,
     val gameDirectory: File,
     val assetsRoot: File,
     val assetsIndexName: String,
@@ -48,7 +49,7 @@ class LaunchCommandBuilder {
     ): ResolvedLaunchCommand {
         val classpathSeparator = File.pathSeparator
         val classpath = plan.classpathEntries
-            .map { entry -> File(environment.gameDirectory.parentFile, entry).absolutePath }
+            .map { entry -> File(environment.minecraftRoot, entry).absolutePath }
             .joinToString(classpathSeparator)
 
         val values = mapOf(
