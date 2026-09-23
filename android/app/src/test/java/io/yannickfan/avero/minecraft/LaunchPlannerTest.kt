@@ -56,6 +56,7 @@ class LaunchPlannerTest {
             assetsRoot = "/data/assets",
             nativesDirectory = "/data/natives",
             librariesDirectory = "/data/libraries",
+            clientJarPath = "/data/versions/1.21.4/1.21.4.jar",
             resolutionWidth = 1280,
             resolutionHeight = 720
         )
@@ -72,6 +73,8 @@ class LaunchPlannerTest {
         assertTrue(plan.gameArguments.contains("1280"))
         assertTrue(plan.jvmArguments.contains("-Djava.library.path=/data/natives"))
         assertTrue(plan.jvmArguments.contains("-Dos=linux"))
+        assertTrue(plan.classpathEntries.contains("/data/libraries/example/library/1.0/library-1.0.jar"))
+        assertTrue(plan.classpathEntries.contains("/data/versions/1.21.4/1.21.4.jar"))
         assertFalse(plan.jvmArguments.contains("-Dos=windows"))
         assertFalse((plan.jvmArguments + plan.gameArguments).any { it.contains(variablePrefix) })
     }
