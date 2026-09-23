@@ -75,8 +75,8 @@ class VanillaLaunchPreparer(
             managedFile(minecraftRoot, entry)
         }
         require(
-            nativeProvider.classpathJars.map(File::canonicalFile) ==
-                expectedClasspathJars.map(File::canonicalFile)
+            nativeProvider.classpathJars.map { it.canonicalFile } ==
+                expectedClasspathJars.map { it.canonicalFile }
         ) {
             "Installed Android LWJGL provider classpath does not match the pinned provider plan"
         }
