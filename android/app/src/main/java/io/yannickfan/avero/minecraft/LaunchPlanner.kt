@@ -1,5 +1,7 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.androidnative.AndroidNativeProviderPlan
+
 class LaunchPlanner(
     private val rules: RuleEvaluator = RuleEvaluator(),
     private val nativeResolver: NativeLibraryResolver = NativeLibraryResolver()
@@ -9,7 +11,7 @@ class LaunchPlanner(
         instance: LauncherInstance,
         context: RuleContext = MinecraftPlatform.androidRuleContext(),
         nativeClassifierPolicy: NativeClassifierPolicy = NativeClassifierPolicy.DISABLED,
-        androidNativeProvider: AndroidNativeProvider? = null
+        androidNativeProvider: AndroidNativeProviderPlan? = null
     ): LaunchPlan {
         require(instance.loader == Loader.VANILLA) {
             "Loader-specific metadata must be normalized before launch planning"
@@ -26,53 +28,37 @@ class LaunchPlanner(
         }
         val nativeLibraries = allowedLibraries.filter { it.natives.isNotEmpty() }
 
-        val providerResolution = androidNativeProvider?.resolve(
-            allowedLibraries,
-            context
-        )
-
-        val effectiveLibraries = providerResolution?.libraries ?: allowedLibraries
-        val nativeArchives: List<NativeArchivePlan>
-        val nativeState: NativePlanState
-        val nativeProviderId: String?
-
-        when {
-            providerResolution != null -> {
-                nativeArchives = providerResolution.nativeArchives
-                nativeState = NativePlanState.READY
-                nativeProviderId = providerResolution.providerId
-            }
-
-            nativeLibraries.isEmpty() -> {
-                nativeArchives = emptyList()
-                nativeState = NativePlanState.NOT_REQUIRED
-                nativeProviderId = null
-            }
-
-            nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP -> {
-                nativeArchives = nativeResolver.resolve(
+        val nativeArchives =
+            if (
+                androidNativeProvider == null &&
+                nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP
+            ) {
+                nativeResolver.resolve(
                     allowedLibraries,
                     context,
                     nativeClassifierPolicy
                 )
-                nativeState =
-                    if (nativeArchives.size == nativeLibraries.size) {
-                        NativePlanState.READY
-                    } else {
-                        NativePlanState.MISSING_COMPATIBLE_ARCHIVES
-                    }
-                nativeProviderId = "mojang-desktop"
+            } else {
+                emptyList()
             }
 
-            else -> {
-                nativeArchives = emptyList()
-                nativeState = NativePlanState.MISSING_ANDROID_PROVIDER
-                nativeProviderId = null
-            }
+        val nativeState = when {
+            androidNativeProvider != null ->
+                NativePlanState.READY
+            nativeLibraries.isEmpty() ->
+                NativePlanState.NOT_REQUIRED
+            nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP &&
+                nativeArchives.size == nativeLibraries.size ->
+                NativePlanState.READY
+            nativeClassifierPolicy == NativeClassifierPolicy.MOJANG_DESKTOP ->
+                NativePlanState.MISSING_COMPATIBLE_ARCHIVES
+            else ->
+                NativePlanState.MISSING_ANDROID_PROVIDER
         }
 
         val classpath = buildList {
-            effectiveLibraries.mapNotNullTo(this) { it.artifact?.path }
+            androidNativeProvider?.classpathEntry?.let(::add)
+            allowedLibraries.mapNotNullTo(this) { it.artifact?.path }
             add("versions/${metadata.id}/${metadata.id}.jar")
         }
 
@@ -91,8 +77,8 @@ class LaunchPlanner(
             gameArguments = rules.resolveArguments(metadata.gameArguments, context),
             nativeArchives = nativeArchives,
             nativeState = nativeState,
-            nativeProviderId = nativeProviderId,
-            logging = metadata.logging
+            logging = metadata.logging,
+            androidNativeProvider = androidNativeProvider
         )
     }
 }
