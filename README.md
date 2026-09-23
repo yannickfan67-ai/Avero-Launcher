@@ -2,6 +2,10 @@
 
 Avero is an independent **Minecraft: Java Edition launcher for Android**.
 
+> **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+
+Avero is maintained independently by **yannickfan67-ai**. Project contact and bug reports are handled through this repository's GitHub Issues.
+
 It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. The goal is to launch and manage Java Edition cleanly on Android with a native Kotlin + Jetpack Compose interface.
 
 ## Product direction
@@ -20,7 +24,7 @@ It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. 
 
 ## Current state
 
-The repository currently contains the Android UI foundation and CI build. The actual Minecraft runtime / authentication / version-launch pipeline is the next major implementation stage.
+The repository currently contains the native Android launcher shell, official Mojang metadata parsing, verified game-file downloading, asset installation and CI APK builds. Java runtime installation, Microsoft authentication, native rendering support and the final launch process are still under active development.
 
 The Android source lives in [`android/`](android/).
 
@@ -43,6 +47,10 @@ See [`DEV_TOOLS.md`](DEV_TOOLS.md). These are tools used to **develop Avero**, n
 
 The static product site lives in [`web/`](web/).
 
+## Trademark and game files
+
+Minecraft, Mojang and Microsoft names and trademarks belong to their respective owners. Avero does not bundle or redistribute the Minecraft game client; required game files are obtained from the official Minecraft/Mojang delivery endpoints at install time.
+
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+Avero's own source code is MIT licensed. See [`LICENSE`](LICENSE). This license does not grant rights to Minecraft game files, branding or third-party dependencies.
