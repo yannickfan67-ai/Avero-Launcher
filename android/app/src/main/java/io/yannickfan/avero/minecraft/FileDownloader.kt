@@ -8,6 +8,17 @@ import java.net.URL
 import java.security.MessageDigest
 
 class FileDownloader {
+    suspend fun isValid(spec: DownloadSpec, file: File): Boolean = withContext(Dispatchers.IO) {
+        if (!file.isFile) return@withContext false
+        spec.size?.let { expected ->
+            if (expected > 0 && file.length() != expected) return@withContext false
+        }
+        spec.sha1?.let { expected ->
+            if (!sha1(file).equals(expected, ignoreCase = true)) return@withContext false
+        }
+        true
+    }
+
     suspend fun download(
         spec: DownloadSpec,
         destination: File,
