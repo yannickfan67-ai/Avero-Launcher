@@ -123,6 +123,17 @@ class MinecraftManifestClient(
                 }
             }
 
+            val logging = root.optJSONObject("logging")
+                ?.optJSONObject("client")
+                ?.let { clientLogging ->
+                    val file = clientLogging.getJSONObject("file")
+                    LoggingSpec(
+                        argument = clientLogging.getString("argument"),
+                        fileId = file.getString("id"),
+                        file = parseDownload(file)
+                    )
+                }
+
             val arguments = root.optJSONObject("arguments")
             val gameArguments = parseArguments(arguments?.optJSONArray("game"))
                 .ifEmpty {
@@ -143,6 +154,7 @@ class MinecraftManifestClient(
                 assetIndexId = asset.optString("id", root.optString("assets", "legacy")),
                 assetIndex = parseDownload(asset),
                 libraries = libraries,
+                logging = logging,
                 gameArguments = gameArguments,
                 jvmArguments = jvmArguments
             )
