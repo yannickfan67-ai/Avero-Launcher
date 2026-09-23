@@ -98,6 +98,33 @@ class AndroidLaunchReadyPreparerTest {
         }
     }
 
+
+    @Test
+    fun sameSizeCorruptedAssetBlocksLaunchReadyState() {
+        val root = Files.createTempDirectory("avero-corrupt-asset-").toFile()
+        try {
+            val fixture = fixture(root)
+            val originalLength = fixture.assetObject.length()
+            fixture.assetObject.writeBytes(ByteArray(originalLength.toInt()) { 0x42 })
+
+            val error = assertThrows(IllegalArgumentException::class.java) {
+                runBlocking {
+                    AndroidLaunchReadyPreparer().prepareInstalled(
+                        metadata = fixture.metadata,
+                        instance = fixture.instance,
+                        account = fixture.account,
+                        minecraftRoot = root,
+                        runtime = fixture.runtime
+                    )
+                }
+            }
+
+            assertTrue(error.message.orEmpty().contains("asset"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun dotDotInstanceNameStaysInsideInstancesRoot() {
         val root = Files.createTempDirectory("avero-instance-path-").toFile()
