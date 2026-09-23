@@ -18,7 +18,8 @@ data class DownloadSpec(
     val url: String,
     val sha1: String?,
     val size: Long?,
-    val path: String? = null
+    val path: String? = null,
+    val sha256: String? = null
 )
 
 enum class RuleAction {
