@@ -100,9 +100,9 @@ class LaunchCommandBuilder {
         plan: LaunchPlan,
         environment: LaunchEnvironment
     ) {
-        if (!plan.requiresNatives) return
-
         val provider = plan.androidNativeProvider
+        if (!plan.requiresNatives && provider == null) return
+
         if (provider != null) {
             require(provider.classpathEntries.isNotEmpty()) {
                 "Android native provider has no patched classpath entries"
