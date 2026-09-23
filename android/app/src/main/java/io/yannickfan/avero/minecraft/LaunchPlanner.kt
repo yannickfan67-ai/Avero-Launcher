@@ -75,7 +75,7 @@ class LaunchPlanner(
 
     private fun requireResolved(plan: LaunchPlan) {
         val unresolved = (plan.jvmArguments + plan.gameArguments)
-            .firstOrNull { it.contains("${") }
+            .firstOrNull { it.contains(36.toChar().toString() + "{") }
         require(unresolved == null) {
             "Launch plan contains unresolved launcher variable: " + unresolved
         }
