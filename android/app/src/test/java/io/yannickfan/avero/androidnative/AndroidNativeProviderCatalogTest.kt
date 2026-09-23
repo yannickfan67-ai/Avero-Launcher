@@ -39,6 +39,25 @@ class AndroidNativeProviderCatalogTest {
     }
 
     @Test
+    fun lwjgl333FreetypeUsesPinnedUpstreamBlobSha() {
+        val pkg = requireNotNull(
+            AndroidNativeProviderCatalog.detect(
+                metadata("3.3.3"),
+                RuntimeArch.ARM64
+            )
+        )
+        val freetype = requireNotNull(
+            pkg.javaComponents.firstOrNull { it.fileName == "lwjgl-freetype.jar" }
+        )
+
+        assertEquals(
+            "28cb82b13145430fd7e8fe27e281b79d20b9db18",
+            freetype.download.gitBlobSha1
+        )
+        assertEquals(40, freetype.download.gitBlobSha1?.length)
+    }
+
+    @Test
     fun unsupportedLwjglVersionIsRejected() {
         assertNull(
             AndroidNativeProviderCatalog.detect(
