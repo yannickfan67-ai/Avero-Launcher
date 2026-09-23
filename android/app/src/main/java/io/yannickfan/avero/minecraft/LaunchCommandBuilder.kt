@@ -97,8 +97,8 @@ class LaunchCommandBuilder {
     private fun substitute(value: String, variables: Map<String, String>): String {
         var result = value
         for ((key, replacement) in variables) {
-            val token = 36.toChar().toString() + "{" + key + "}"
-            result = result.replace(token, replacement)
+            val placeholder = "$" + "{" + key + "}"
+            result = result.replace(placeholder, replacement)
         }
 
         val unresolved = PLACEHOLDER.findAll(result).map { it.value }.toList()
