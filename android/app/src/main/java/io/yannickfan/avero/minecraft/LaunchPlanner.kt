@@ -23,7 +23,11 @@ class LaunchPlanner(
 
         val classpath = buildList {
             addAll(androidNativeProvider?.classpathEntries.orEmpty())
-            allowedLibraries.mapNotNullTo(this) { it.artifact?.path }
+            allowedLibraries.mapNotNullTo(this) { library ->
+                library.artifact?.path?.let { path ->
+                    "libraries/" + path.trimStart('/')
+                }
+            }
             add("versions/${metadata.id}/${metadata.id}.jar")
         }
 
