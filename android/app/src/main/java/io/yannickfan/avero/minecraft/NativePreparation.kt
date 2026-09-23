@@ -29,6 +29,27 @@ class NativePreparation(
             }
         }
 
+        plan.androidNativeProvider?.let { provider ->
+            val directory = resolveProviderDirectory(
+                root = root,
+                relativePath = provider.nativeDirectory
+            )
+            val libraries = directory.listFiles()
+                ?.filter { it.isFile && it.name.endsWith(".so") }
+                .orEmpty()
+            require(libraries.isNotEmpty()) {
+                "Android native provider is not installed or contains no native libraries: " +
+                    provider.id
+            }
+
+            return NativePreparationResult(
+                directory = directory,
+                downloadedArchives = 0,
+                reusedArchives = 0,
+                extractedFiles = libraries.size
+            )
+        }
+
         val layout = InstanceLayout(root)
         val finalDirectory = layout.nativesDirectory(instanceName)
         val stagingDirectory = layout.nativesStagingDirectory(instanceName)
@@ -86,5 +107,29 @@ class NativePreparation(
             stagingDirectory.deleteRecursively()
             throw t
         }
+    }
+
+    private fun resolveProviderDirectory(
+        root: File,
+        relativePath: String
+    ): File {
+        require(relativePath.isNotBlank()) {
+            "Android native provider directory is blank"
+        }
+        require(!File(relativePath).isAbsolute) {
+            "Android native provider directory must be relative to the Minecraft root"
+        }
+
+        val canonicalRoot = root.canonicalFile
+        val directory = File(canonicalRoot, relativePath).canonicalFile
+        require(
+            directory.path.startsWith(canonicalRoot.path + File.separator)
+        ) {
+            "Android native provider directory escapes the Minecraft root"
+        }
+        require(directory.isDirectory) {
+            "Android native provider directory is missing: " + directory.absolutePath
+        }
+        return directory
     }
 }
