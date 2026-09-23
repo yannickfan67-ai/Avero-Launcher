@@ -54,7 +54,7 @@ class GameInstaller(
 
         tasks.forEachIndexed { index, (label, spec, destination) ->
             onProgress(InstallProgress(index, tasks.size, label))
-            if (!isAlreadyValid(destination, spec)) {
+            if (!downloader.isValid(spec, destination)) {
                 downloader.download(spec, destination)
             }
             onProgress(InstallProgress(index + 1, tasks.size, label))
@@ -66,11 +66,5 @@ class GameInstaller(
             skippedLibrariesWithoutArtifact = metadata.libraries.size - libraries.size,
             root = root
         )
-    }
-
-    private fun isAlreadyValid(file: File, spec: DownloadSpec): Boolean {
-        if (!file.isFile) return false
-        val expectedSize = spec.size ?: return false
-        return expectedSize == file.length()
     }
 }
