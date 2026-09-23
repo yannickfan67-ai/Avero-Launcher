@@ -1,5 +1,6 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.androidnative.AndroidNativeProviderPlan
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,6 +13,43 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class NativePreparationTest {
+    @Test
+    fun usesInstalledProviderNativeDirectoryDirectly() = runBlocking {
+        val root = Files.createTempDirectory("avero-native-test-").toFile()
+        try {
+            val provider = AndroidNativeProviderPlan(
+                id = "test-provider",
+                lwjglVersion = "3.4.1",
+                classpathEntry = "android-native/test-provider/classes.jar",
+                nativeDirectory = "android-native/test-provider/natives"
+            )
+            val nativeDirectory = File(root, provider.nativeDirectory)
+            nativeDirectory.mkdirs()
+            File(nativeDirectory, "liblwjgl.so").writeText("native")
+
+            val result = NativePreparation().prepare(
+                plan = LaunchPlan(
+                    versionId = "test",
+                    mainClass = "net.minecraft.client.main.Main",
+                    javaMajorVersion = 21,
+                    classpathEntries = listOf(provider.classpathEntry),
+                    jvmArguments = emptyList(),
+                    gameArguments = emptyList(),
+                    nativeState = NativePlanState.READY,
+                    androidNativeProvider = provider
+                ),
+                root = root,
+                instanceName = "Test"
+            )
+
+            assertEquals(nativeDirectory.canonicalFile, result.directory.canonicalFile)
+            assertEquals(1, result.extractedFiles)
+            assertEquals(0, result.downloadedArchives)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun reusesVerifiedArchiveAndAtomicallyExtractsNatives() = runBlocking {
         val root = Files.createTempDirectory("avero-native-test-").toFile()
@@ -47,8 +85,7 @@ class NativePreparationTest {
                         extractExcludes = emptyList()
                     )
                 ),
-                nativeState = NativePlanState.READY,
-                nativeProviderId = "test-provider"
+                nativeState = NativePlanState.READY
             )
 
             val result = NativePreparation().prepare(
@@ -99,6 +136,43 @@ class NativePreparationTest {
 
             assertTrue(failed)
             assertTrue(marker.isFile)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun providerDirectoryCannotEscapeMinecraftRoot() = runBlocking {
+        val root = Files.createTempDirectory("avero-native-test-").toFile()
+        try {
+            val provider = AndroidNativeProviderPlan(
+                id = "bad-provider",
+                lwjglVersion = "3.4.1",
+                classpathEntry = "android-native/bad/classes.jar",
+                nativeDirectory = "../escape"
+            )
+
+            var failed = false
+            try {
+                NativePreparation().prepare(
+                    plan = LaunchPlan(
+                        versionId = "test",
+                        mainClass = "net.minecraft.client.main.Main",
+                        javaMajorVersion = 21,
+                        classpathEntries = emptyList(),
+                        jvmArguments = emptyList(),
+                        gameArguments = emptyList(),
+                        nativeState = NativePlanState.READY,
+                        androidNativeProvider = provider
+                    ),
+                    root = root,
+                    instanceName = "Test"
+                )
+            } catch (_: IllegalArgumentException) {
+                failed = true
+            }
+
+            assertTrue(failed)
         } finally {
             root.deleteRecursively()
         }
