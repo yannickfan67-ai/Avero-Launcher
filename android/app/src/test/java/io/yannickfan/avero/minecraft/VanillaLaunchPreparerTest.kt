@@ -78,6 +78,32 @@ class VanillaLaunchPreparerTest {
     }
 
     @Test
+    fun sameSizeCorruptAssetPreventsLaunchPreparation() {
+        val root = Files.createTempDirectory("avero-launch-corrupt-asset-").toFile()
+        try {
+            val fixture = fixture(root)
+            fixture.assetObject.writeText("payloae")
+
+            val error = assertThrows(IllegalArgumentException::class.java) {
+                runBlocking {
+                    VanillaLaunchPreparer().prepare(
+                        metadata = fixture.metadata,
+                        instance = fixture.instance,
+                        account = fixture.account,
+                        minecraftRoot = root,
+                        runtime = fixture.runtime,
+                        nativeProvider = fixture.provider
+                    )
+                }
+            }
+
+            assertTrue(error.message.orEmpty().contains("integrity"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
     fun missingAssetPreventsLaunchPreparation() {
         val root = Files.createTempDirectory("avero-launch-missing-asset-").toFile()
         try {
@@ -105,7 +131,7 @@ class VanillaLaunchPreparerTest {
 
     private fun fixture(root: File): Fixture {
         val version = "1.21.4"
-        val assetHash = "aa" + "0".repeat(38)
+        val assetHash = "f07e5a815613c5abeddc4b682247a4c42d8a95df"
         val layout = InstanceLayout(root)
 
         layout.clientJar(version).apply {
