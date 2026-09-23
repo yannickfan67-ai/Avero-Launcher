@@ -88,7 +88,7 @@ class GameLaunchRequestStoreTest {
             val remaining = root.resolve(
                 GameLaunchRequestStore.DIRECTORY_NAME
             ).listFiles().orEmpty()
-            assertTrue(remaining.none { it.name == "${request.requestId}.json" })
+            assertTrue(remaining.none { it.name == "${request.requestId}.launch" })
         } finally {
             root.deleteRecursively()
         }

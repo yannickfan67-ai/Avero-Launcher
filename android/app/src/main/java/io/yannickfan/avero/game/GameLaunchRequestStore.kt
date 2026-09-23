@@ -1,6 +1,10 @@
 package io.yannickfan.avero.game
 
-import org.json.JSONObject
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.EOFException
 import java.io.File
 
 class GameLaunchRequestStore(
@@ -21,7 +25,19 @@ class GameLaunchRequestStore(
         if (temp.exists()) temp.delete()
 
         try {
-            temp.writeText(encode(request))
+            DataOutputStream(
+                BufferedOutputStream(temp.outputStream())
+            ).use { output ->
+                output.writeInt(MAGIC)
+                output.writeInt(FORMAT_VERSION)
+                writeString(output, request.requestId)
+                writeString(output, request.versionId)
+                writeString(output, request.playerName)
+                writeString(output, request.playerUuid)
+                writeString(output, request.minecraftAccessToken)
+                output.writeInt(request.memoryMb)
+                output.writeLong(request.createdAtEpochMs)
+            }
             makeOwnerOnly(temp)
 
             if (destination.exists()) {
@@ -47,14 +63,13 @@ class GameLaunchRequestStore(
         val file = requestFile(requestId)
         require(file.isFile) { "Launch request not found" }
 
-        val payload = try {
-            file.readText()
+        val request = try {
+            decode(file)
         } finally {
-            // One-shot by design: even malformed/expired requests are destroyed.
+            // One-shot by design: malformed/expired requests are destroyed too.
             file.delete()
         }
 
-        val request = decode(payload)
         require(request.requestId == requestId) {
             "Launch request identity mismatch"
         }
@@ -75,7 +90,7 @@ class GameLaunchRequestStore(
             if (!file.isFile || file.name.startsWith(".")) continue
 
             val expired = runCatching {
-                val request = decode(file.readText())
+                val request = decode(file)
                 val age = nowEpochMs - request.createdAtEpochMs
                 age < 0L || age > maxAgeMs
             }.getOrDefault(true)
@@ -90,35 +105,63 @@ class GameLaunchRequestStore(
             "Invalid launch request ID"
         }
         val dir = directory.canonicalFile
-        val file = File(dir, "$requestId.json").canonicalFile
+        val file = File(dir, "$requestId.launch").canonicalFile
         require(file.parentFile == dir) {
             "Launch request path escaped private directory"
         }
         return file
     }
 
-    private fun encode(request: GameLaunchRequest): String =
-        JSONObject()
-            .put("requestId", request.requestId)
-            .put("versionId", request.versionId)
-            .put("playerName", request.playerName)
-            .put("playerUuid", request.playerUuid)
-            .put("minecraftAccessToken", request.minecraftAccessToken)
-            .put("memoryMb", request.memoryMb)
-            .put("createdAtEpochMs", request.createdAtEpochMs)
-            .toString()
+    private fun decode(file: File): GameLaunchRequest {
+        try {
+            DataInputStream(
+                BufferedInputStream(file.inputStream())
+            ).use { input ->
+                require(input.readInt() == MAGIC) {
+                    "Invalid launch request format"
+                }
+                require(input.readInt() == FORMAT_VERSION) {
+                    "Unsupported launch request format"
+                }
 
-    private fun decode(value: String): GameLaunchRequest {
-        val json = JSONObject(value)
-        return GameLaunchRequest(
-            requestId = json.getString("requestId"),
-            versionId = json.getString("versionId"),
-            playerName = json.getString("playerName"),
-            playerUuid = json.getString("playerUuid"),
-            minecraftAccessToken = json.getString("minecraftAccessToken"),
-            memoryMb = json.optInt("memoryMb", 4096),
-            createdAtEpochMs = json.getLong("createdAtEpochMs")
-        )
+                return GameLaunchRequest(
+                    requestId = readString(input),
+                    versionId = readString(input),
+                    playerName = readString(input),
+                    playerUuid = readString(input),
+                    minecraftAccessToken = readString(input),
+                    memoryMb = input.readInt(),
+                    createdAtEpochMs = input.readLong()
+                )
+            }
+        } catch (e: EOFException) {
+            throw IllegalArgumentException(
+                "Truncated launch request",
+                e
+            )
+        }
+    }
+
+    private fun writeString(
+        output: DataOutputStream,
+        value: String
+    ) {
+        val data = value.toByteArray(Charsets.UTF_8)
+        require(data.size <= MAX_STRING_BYTES) {
+            "Launch request field is too large"
+        }
+        output.writeInt(data.size)
+        output.write(data)
+    }
+
+    private fun readString(input: DataInputStream): String {
+        val size = input.readInt()
+        require(size in 0..MAX_STRING_BYTES) {
+            "Invalid launch request field length"
+        }
+        val data = ByteArray(size)
+        input.readFully(data)
+        return data.toString(Charsets.UTF_8)
     }
 
     private fun makeOwnerOnly(file: File) {
@@ -132,5 +175,9 @@ class GameLaunchRequestStore(
     companion object {
         const val DIRECTORY_NAME = "launch-requests"
         const val DEFAULT_MAX_AGE_MS = 2 * 60 * 1000L
+
+        private const val MAGIC = 0x4156524F // "AVRO"
+        private const val FORMAT_VERSION = 1
+        private const val MAX_STRING_BYTES = 128 * 1024
     }
 }
