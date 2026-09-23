@@ -30,7 +30,9 @@ class LaunchPlanner(
 
         val classpath = buildList {
             addAll(androidNativeProvider?.classpathEntries.orEmpty())
-            effectiveLibraries.mapNotNullTo(this) { it.artifact?.path }
+            effectiveLibraries.mapNotNullTo(this) { library ->
+                library.artifact?.path?.let(::libraryClasspathEntry)
+            }
             add("versions/${metadata.id}/${metadata.id}.jar")
         }
 
@@ -62,4 +64,13 @@ class LaunchPlanner(
             androidNativeProvider = androidNativeProvider
         )
     }
+    private fun libraryClasspathEntry(path: String): String {
+        val normalized = path.replace('\\', '/').trimStart('/')
+        return if (normalized.startsWith("libraries/")) {
+            normalized
+        } else {
+            "libraries/$normalized"
+        }
+    }
+
 }
