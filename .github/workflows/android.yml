@@ -3,8 +3,18 @@ name: Android CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -23,3 +33,9 @@ jobs:
           gradle-version: '9.6.0'
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: avero-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
