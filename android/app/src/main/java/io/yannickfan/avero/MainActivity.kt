@@ -54,7 +54,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.yannickfan.avero.minecraft.AssetInstaller
 import io.yannickfan.avero.minecraft.GameInstaller
+import io.yannickfan.avero.minecraft.InstanceLayout
 import io.yannickfan.avero.minecraft.LaunchPlanner
 import io.yannickfan.avero.minecraft.LauncherInstance
 import io.yannickfan.avero.minecraft.MinecraftManifestClient
@@ -407,8 +409,16 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                                     installStatus =
                                         "${progress.completedFiles}/${progress.totalFiles} · ${progress.currentFile}"
                                 }
+                                val indexFile = InstanceLayout(result.root).assetIndex(m.assetIndexId)
+                                val assetCount = AssetInstaller().install(
+                                    indexFile = indexFile,
+                                    root = result.root
+                                ) { progress ->
+                                    installStatus =
+                                        "Assets ${progress.completed}/${progress.total} · ${progress.current}"
+                                }
                                 installStatus =
-                                    "Core ready · ${result.downloadedFiles} files · ${result.root.absolutePath}"
+                                    "Ready · ${result.downloadedFiles} core files + $assetCount assets"
                             } catch (t: Throwable) {
                                 installStatus = "Failed: ${t.message ?: t::class.java.simpleName}"
                             } finally {
@@ -418,7 +428,7 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
                     }
                 ) {
                     Icon(Icons.Rounded.Download, null)
-                    Text(if (installing) " Installing…" else " Install core files")
+                    Text(if (installing) " Installing…" else " Install game files")
                 }
             }
         } else {
@@ -435,8 +445,8 @@ private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
         item {
             FeatureCard(
                 Icons.Rounded.Extension,
-                "Assets are next",
-                "The asset index is installed now; downloading every hashed asset object is the next installation stage."
+                "Hashed assets",
+                "The installer now reads the asset index and downloads every required Mojang asset object with SHA-1 verification."
             )
         }
         item {
