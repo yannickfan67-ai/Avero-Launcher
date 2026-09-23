@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Button
@@ -40,16 +41,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.yannickfan.avero.minecraft.LaunchPlanner
+import io.yannickfan.avero.minecraft.LauncherInstance
+import io.yannickfan.avero.minecraft.MinecraftManifestClient
+import io.yannickfan.avero.minecraft.MinecraftVersionMetadata
+import io.yannickfan.avero.minecraft.RuntimeManager
+import io.yannickfan.avero.minecraft.VersionManifest
 import io.yannickfan.avero.ui.theme.AveroTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,7 +71,15 @@ class MainActivity : ComponentActivity() {
 }
 
 data class NavItem(val label: String, val icon: ImageVector)
-data class VersionEntry(val version: String, val loader: String, val state: String)
+
+private sealed interface ManifestState {
+    data object Loading : ManifestState
+    data class Ready(
+        val manifest: VersionManifest,
+        val latestMetadata: MinecraftVersionMetadata
+    ) : ManifestState
+    data class Failed(val message: String) : ManifestState
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +91,41 @@ fun AveroApp() {
         NavItem("Settings", Icons.Rounded.Settings)
     )
     var selected by remember { mutableIntStateOf(0) }
+    var manifestState by remember { mutableStateOf<ManifestState>(ManifestState.Loading) }
+    val client = remember { MinecraftManifestClient() }
+    val scope = rememberCoroutineScope()
+
+    fun refreshManifest() {
+        manifestState = ManifestState.Loading
+        scope.launch {
+            manifestState = try {
+                val manifest = client.fetchManifest()
+                val latest = manifest.versions.firstOrNull { it.id == manifest.latestRelease }
+                    ?: error("Latest release not present in manifest")
+                val metadata = client.fetchVersion(latest)
+                ManifestState.Ready(manifest, metadata)
+            } catch (t: Throwable) {
+                ManifestState.Failed(t.message ?: t::class.java.simpleName)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val manifest = try {
+            client.fetchManifest()
+        } catch (t: Throwable) {
+            manifestState = ManifestState.Failed(t.message ?: t::class.java.simpleName)
+            return@LaunchedEffect
+        }
+
+        manifestState = try {
+            val latest = manifest.versions.firstOrNull { it.id == manifest.latestRelease }
+                ?: error("Latest release not present in manifest")
+            ManifestState.Ready(manifest, client.fetchVersion(latest))
+        } catch (t: Throwable) {
+            ManifestState.Failed(t.message ?: t::class.java.simpleName)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -104,16 +158,21 @@ fun AveroApp() {
         }
     ) { padding ->
         when (selected) {
-            0 -> HomeScreen(padding) { selected = it }
-            1 -> VersionsScreen(padding)
-            2 -> DownloadsScreen(padding)
-            else -> SettingsScreen(padding)
+            0 -> HomeScreen(padding, manifestState, onRefresh = ::refreshManifest) { selected = it }
+            1 -> VersionsScreen(padding, manifestState)
+            2 -> DownloadsScreen(padding, manifestState)
+            else -> SettingsScreen(padding, manifestState)
         }
     }
 }
 
 @Composable
-private fun HomeScreen(padding: PaddingValues, navigate: (Int) -> Unit) {
+private fun HomeScreen(
+    padding: PaddingValues,
+    state: ManifestState,
+    onRefresh: () -> Unit,
+    navigate: (Int) -> Unit
+) {
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -127,28 +186,74 @@ private fun HomeScreen(padding: PaddingValues, navigate: (Int) -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Manage accounts, versions, loaders and runtime settings from one native launcher.",
+                "Avero now reads Mojang's official version manifest and version metadata directly.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                    Text("Selected instance", style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.height(6.dp))
-                    Text("Minecraft 1.21.4", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Fabric · Java 21 · 4096 MB", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(onClick = { }) {
-                            Icon(Icons.Rounded.PlayArrow, null)
-                            Text(" Play")
+            when (state) {
+                ManifestState.Loading -> StatusCard(
+                    "Connecting to Mojang metadata",
+                    "Loading version_manifest_v2.json…"
+                )
+                is ManifestState.Failed -> {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Manifest request failed", fontWeight = FontWeight.Bold)
+                            Text(state.message, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(Modifier.height(12.dp))
+                            OutlinedButton(onClick = onRefresh) {
+                                Icon(Icons.Rounded.Refresh, null)
+                                Text(" Retry")
+                            }
                         }
-                        OutlinedButton(onClick = { navigate(1) }) {
-                            Text("Change version")
+                    }
+                }
+                is ManifestState.Ready -> {
+                    val metadata = state.latestMetadata
+                    val runtime = RuntimeManager().requirementFor(metadata)
+                    val plan = LaunchPlanner().createVanillaPlan(
+                        metadata = metadata,
+                        instance = LauncherInstance(
+                            name = "Latest release",
+                            versionId = metadata.id,
+                            javaMajorVersion = metadata.javaMajorVersion
+                        )
+                    )
+
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Latest official release", style = MaterialTheme.typography.labelLarge)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Minecraft ${metadata.id}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Java ${metadata.javaMajorVersion} · ${metadata.libraries.size} libraries",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Main class: ${metadata.mainClass}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            StatusRow("Runtime", "${runtime.state} · ${runtime.architecture}")
+                            Spacer(Modifier.height(8.dp))
+                            StatusRow("Classpath entries", plan.classpathEntries.size.toString())
+                            Spacer(Modifier.height(14.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Button(onClick = { navigate(2) }) {
+                                    Icon(Icons.Rounded.Download, null)
+                                    Text(" Prepare files")
+                                }
+                                OutlinedButton(onClick = { navigate(1) }) {
+                                    Text("Versions")
+                                }
+                            }
                         }
                     }
                 }
@@ -173,15 +278,13 @@ private fun HomeScreen(padding: PaddingValues, navigate: (Int) -> Unit) {
         }
 
         item { SectionTitle("Launcher pipeline") }
-        items(
-            listOf(
-                "Microsoft account authentication",
-                "Game metadata and asset download",
-                "Java runtime selection and management",
-                "Loader and mod installation",
-                "Launch arguments, renderer and logs"
-            )
-        ) { StatusRow(it, "planned") }
+        item { StatusRow("Official version manifest", if (state is ManifestState.Ready) "working" else "pending") }
+        item { StatusRow("Version metadata parser", if (state is ManifestState.Ready) "working" else "pending") }
+        item { StatusRow("Verified file downloader", "implemented") }
+        item { StatusRow("Vanilla launch-plan builder", "implemented") }
+        item { StatusRow("Microsoft authentication", "next") }
+        item { StatusRow("Android Java runtime install", "next") }
+        item { StatusRow("Actual Java process launch", "next") }
     }
 }
 
@@ -211,13 +314,7 @@ private fun QuickTile(
 }
 
 @Composable
-private fun VersionsScreen(padding: PaddingValues) {
-    val versions = listOf(
-        VersionEntry("1.21.4", "Fabric", "Ready"),
-        VersionEntry("1.20.1", "Forge", "Not installed"),
-        VersionEntry("1.8.9", "Vanilla", "Not installed")
-    )
-
+private fun VersionsScreen(padding: PaddingValues, state: ManifestState) {
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -226,23 +323,34 @@ private fun VersionsScreen(padding: PaddingValues) {
         item {
             Text("Versions", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Installed and available Minecraft instances.",
+                "Recent versions from Mojang's official manifest.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        items(versions) { entry ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Storage, null, tint = MaterialTheme.colorScheme.primary)
-                    Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                        Text(entry.version, fontWeight = FontWeight.SemiBold)
-                        Text(entry.loader, style = MaterialTheme.typography.bodySmall)
+        when (state) {
+            ManifestState.Loading -> item { StatusCard("Loading versions", "Waiting for Mojang metadata…") }
+            is ManifestState.Failed -> item { StatusCard("Unavailable", state.message) }
+            is ManifestState.Ready -> {
+                item { StatusRow("Latest release", state.manifest.latestRelease) }
+                item { StatusRow("Latest snapshot", state.manifest.latestSnapshot) }
+                items(state.manifest.versions.take(30)) { entry ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.Storage, null, tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                                Text(entry.id, fontWeight = FontWeight.SemiBold)
+                                Text(entry.type, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text(
+                                entry.releaseTime?.take(10) ?: "",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
-                    Text(entry.state, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -250,7 +358,7 @@ private fun VersionsScreen(padding: PaddingValues) {
 }
 
 @Composable
-private fun DownloadsScreen(padding: PaddingValues) {
+private fun DownloadsScreen(padding: PaddingValues, state: ManifestState) {
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -259,18 +367,27 @@ private fun DownloadsScreen(padding: PaddingValues) {
         item {
             Text("Downloads", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Game files, assets, libraries, loaders and runtimes will appear here.",
+                "The downloader verifies size and SHA-1 before moving a completed file into place.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        item { FeatureCard(Icons.Rounded.Download, "Version files", "Minecraft metadata, client jar, libraries and assets.") }
-        item { FeatureCard(Icons.Rounded.Extension, "Loaders", "Fabric, Forge, NeoForge and Quilt installation tasks.") }
-        item { FeatureCard(Icons.Rounded.Storage, "Java runtimes", "Managed Java runtimes for the selected Minecraft version.") }
+
+        if (state is ManifestState.Ready) {
+            val m = state.latestMetadata
+            item { StatusRow("Target version", m.id) }
+            item { StatusRow("Client jar", formatBytes(m.client.size)) }
+            item { StatusRow("Asset index", m.assetIndexId) }
+            item { StatusRow("Libraries", m.libraries.size.toString()) }
+        }
+
+        item { FeatureCard(Icons.Rounded.Download, "Verified downloads", "Temporary .part files, byte-size checks and SHA-1 verification are implemented.") }
+        item { FeatureCard(Icons.Rounded.Extension, "Loaders", "Fabric, Forge, NeoForge and Quilt installation remains the next loader milestone.") }
+        item { FeatureCard(Icons.Rounded.Storage, "Java runtimes", "Runtime requirements are detected; Android-compatible runtime packs still need installation support.") }
     }
 }
 
 @Composable
-private fun SettingsScreen(padding: PaddingValues) {
+private fun SettingsScreen(padding: PaddingValues, state: ManifestState) {
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
@@ -280,7 +397,12 @@ private fun SettingsScreen(padding: PaddingValues) {
             Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         }
         item { StatusRow("Memory allocation", "4096 MB") }
-        item { StatusRow("Java runtime", "Automatic") }
+        item {
+            StatusRow(
+                "Required Java",
+                if (state is ManifestState.Ready) "Java ${state.latestMetadata.javaMajorVersion}" else "Automatic"
+            )
+        }
         item { StatusRow("Renderer", "Automatic") }
         item { StatusRow("Game directory", "Avero managed") }
         item { StatusRow("Package", "io.yannickfan.avero") }
@@ -293,6 +415,16 @@ private fun FeatureCard(icon: ImageVector, title: String, description: String) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(12.dp))
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun StatusCard(title: String, description: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Text(title, fontWeight = FontWeight.Bold)
             Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -315,4 +447,10 @@ private fun StatusRow(name: String, value: String) {
 @Composable
 private fun SectionTitle(text: String) {
     Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+}
+
+private fun formatBytes(bytes: Long?): String {
+    if (bytes == null) return "unknown"
+    val mib = bytes.toDouble() / 1024.0 / 1024.0
+    return "%.1f MiB".format(mib)
 }
