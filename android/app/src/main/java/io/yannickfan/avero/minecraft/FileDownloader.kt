@@ -32,6 +32,11 @@ class FileDownloader(
                 return@withContext false
             }
         }
+        spec.gitBlobSha1?.let { expected ->
+            if (!gitBlobSha1(file).equals(expected, ignoreCase = true)) {
+                return@withContext false
+            }
+        }
         true
     }
 
@@ -173,6 +178,14 @@ class FileDownloader(
                 error("SHA-256 mismatch: expected $expected, got $actual")
             }
         }
+
+        spec.gitBlobSha1?.let { expected ->
+            val actual = gitBlobSha1(temp)
+            if (!actual.equals(expected, ignoreCase = true)) {
+                temp.delete()
+                error("Git blob SHA-1 mismatch: expected $expected, got $actual")
+            }
+        }
     }
 
     private fun commit(temp: File, destination: File): File {
@@ -186,11 +199,27 @@ class FileDownloader(
     private fun hasIntegrityMetadata(spec: DownloadSpec): Boolean =
         (spec.size ?: 0L) > 0L ||
             !spec.sha1.isNullOrBlank() ||
-            !spec.sha256.isNullOrBlank()
+            !spec.sha256.isNullOrBlank() ||
+            !spec.gitBlobSha1.isNullOrBlank()
 
     private fun isRetryable(t: Throwable): Boolean {
         if (t is HttpStatusException) return t.retryable
         return t is IOException
+    }
+
+    private fun gitBlobSha1(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-1")
+        val header = "blob " + file.length() + "\u0000"
+        digest.update(header.toByteArray(Charsets.UTF_8))
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE * 4)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun digest(file: File, algorithm: String): String {
