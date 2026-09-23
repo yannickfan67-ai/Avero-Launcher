@@ -18,7 +18,8 @@ data class PreparedVanillaLaunch(
 class VanillaLaunchPreparer(
     private val planner: LaunchPlanner = LaunchPlanner(),
     private val commandBuilder: LaunchCommandBuilder = LaunchCommandBuilder(),
-    private val assetInstaller: AssetInstaller = AssetInstaller()
+    private val assetInstaller: AssetInstaller = AssetInstaller(),
+    private val downloader: FileDownloader = FileDownloader()
 ) {
     suspend fun prepare(
         metadata: MinecraftVersionMetadata,
@@ -104,15 +105,23 @@ class VanillaLaunchPreparer(
 
         val layout = InstanceLayout(minecraftRoot)
         val assetIndex = layout.assetIndex(metadata.assetIndexId)
-        require(assetIndex.isFile) {
-            "Minecraft asset index is not installed: ${metadata.assetIndexId}"
+        require(
+            downloader.isValid(metadata.assetIndex, assetIndex)
+        ) {
+            "Minecraft asset index is missing or failed integrity validation: " +
+                metadata.assetIndexId
         }
-        val missingAsset = assetInstaller.parseIndex(assetIndex).firstOrNull { asset ->
-            val file = layout.assetObject(asset.hash)
-            !file.isFile || file.length() != asset.size
+
+        var invalidAsset: AssetObjectSpec? = null
+        for (asset in assetInstaller.parseIndex(assetIndex)) {
+            if (!downloader.isValid(asset.downloadSpec, layout.assetObject(asset.hash))) {
+                invalidAsset = asset
+                break
+            }
         }
-        require(missingAsset == null) {
-            "Minecraft asset is missing or incomplete: ${missingAsset?.logicalName}"
+        require(invalidAsset == null) {
+            "Minecraft asset is missing or failed integrity validation: " +
+                invalidAsset?.logicalName
         }
 
         val plan = planner.createVanillaPlan(
