@@ -68,6 +68,35 @@ class FileDownloaderTest {
     }
 
     @Test
+    fun invalidResumeContentRangeRestartsFromZero() = withTempDir { root ->
+        val payload = payload()
+        val half = payload.size / 2
+        val destination = root.resolve("client.jar")
+        root.resolve("client.jar.part").writeBytes(payload.copyOfRange(0, half))
+
+        val invalidResume = ScriptedConnection(
+            code = 206,
+            body = payload.copyOfRange(half, payload.size),
+            declaredLength = (payload.size - half).toLong(),
+            contentRange = null
+        )
+        val restart = ScriptedConnection(
+            code = 200,
+            body = payload,
+            declaredLength = payload.size.toLong()
+        )
+        val connections = ArrayDeque(listOf(invalidResume, restart))
+
+        runBlocking {
+            downloader(connections, maxAttempts = 2).download(spec(payload), destination)
+        }
+
+        assertEquals("bytes=$half-", invalidResume.requestHeaders["Range"])
+        assertEquals(null, restart.requestHeaders["Range"])
+        assertArrayEquals(payload, destination.readBytes())
+    }
+
+    @Test
     fun retriesTransientHttpFailure() = withTempDir { root ->
         val payload = payload()
         val unavailable = ScriptedConnection(code = 503)
