@@ -1,7 +1,7 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.androidnative.AndroidNativeProviderPlan
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,38 +21,16 @@ class LaunchPlannerTest {
             plan.nativeState
         )
         assertTrue(plan.nativeArchives.isEmpty())
-        assertTrue(plan.classpathEntries.contains("org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"))
     }
 
     @Test
-    fun androidProviderCanReplaceClasspathAndNativeArchives() {
-        val replacement = LibrarySpec(
-            name = "org.lwjgl:lwjgl:3.3.3",
-            artifact = DownloadSpec(
-                url = "https://example.invalid/android-lwjgl.jar",
-                sha1 = "abc",
-                size = 100,
-                path = "android/lwjgl-3.3.3.jar"
-            )
+    fun androidProviderMakesPlanReadyAndPrependsClasspath() {
+        val provider = AndroidNativeProviderPlan(
+            id = "test-provider",
+            lwjglVersion = "3.3.3",
+            classpathEntry = "android-native/test-provider/classes.jar",
+            nativeDirectory = "android-native/test-provider/natives"
         )
-        val archive = NativeArchivePlan(
-            libraryName = replacement.name,
-            classifier = "android-arm64",
-            download = DownloadSpec(
-                url = "https://example.invalid/android-native.jar",
-                sha1 = "def",
-                size = 200,
-                path = "android/lwjgl-native-arm64.jar"
-            ),
-            extractExcludes = emptyList()
-        )
-        val provider = AndroidNativeProvider { _, _ ->
-            AndroidNativeProviderResolution(
-                providerId = "test-provider",
-                libraries = listOf(replacement),
-                nativeArchives = listOf(archive)
-            )
-        }
 
         val plan = LaunchPlanner().createVanillaPlan(
             metadata = metadata(nativeLibrary()),
@@ -61,30 +39,32 @@ class LaunchPlannerTest {
         )
 
         assertEquals(NativePlanState.READY, plan.nativeState)
-        assertEquals("test-provider", plan.nativeProviderId)
-        assertEquals(listOf(archive), plan.nativeArchives)
-        assertTrue(plan.classpathEntries.contains("android/lwjgl-3.3.3.jar"))
-        assertFalse(
+        assertEquals(provider, plan.androidNativeProvider)
+        assertEquals(provider.classpathEntry, plan.classpathEntries.first())
+        assertTrue(
             plan.classpathEntries.contains(
                 "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
             )
         )
+        assertTrue(plan.nativeArchives.isEmpty())
     }
 
     @Test
     fun providerAndDesktopClassifierPolicyCannotBeCombined() {
+        val provider = AndroidNativeProviderPlan(
+            id = "test-provider",
+            lwjglVersion = "3.3.3",
+            classpathEntry = "android-native/test-provider/classes.jar",
+            nativeDirectory = "android-native/test-provider/natives"
+        )
+
         var failed = false
         try {
             LaunchPlanner().createVanillaPlan(
                 metadata = metadata(nativeLibrary()),
                 instance = instance(),
                 nativeClassifierPolicy = NativeClassifierPolicy.MOJANG_DESKTOP,
-                androidNativeProvider = AndroidNativeProvider { libraries, _ ->
-                    AndroidNativeProviderResolution(
-                        providerId = "test-provider",
-                        libraries = libraries
-                    )
-                }
+                androidNativeProvider = provider
             )
         } catch (_: IllegalArgumentException) {
             failed = true
