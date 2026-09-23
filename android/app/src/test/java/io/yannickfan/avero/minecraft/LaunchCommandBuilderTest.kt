@@ -148,7 +148,6 @@ class LaunchCommandBuilderTest {
                 classpathEntries = provider.classpathEntries,
                 jvmArguments = emptyList(),
                 gameArguments = emptyList(),
-                requiresNatives = true,
                 androidNativeProvider = provider
             )
 
