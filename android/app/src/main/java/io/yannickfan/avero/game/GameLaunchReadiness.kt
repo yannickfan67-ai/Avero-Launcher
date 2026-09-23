@@ -2,6 +2,7 @@ package io.yannickfan.avero.game
 
 import io.yannickfan.avero.androidnative.AndroidVanillaLaunchPreparer
 import io.yannickfan.avero.androidnative.PreparedAndroidVanillaLaunch
+import io.yannickfan.avero.minecraft.AssetInstaller
 import io.yannickfan.avero.minecraft.InstanceLayout
 import io.yannickfan.avero.minecraft.LauncherInstance
 import io.yannickfan.avero.minecraft.MinecraftVersionMetadata
@@ -20,9 +21,10 @@ class GameLaunchReadinessChecker(
     private val runtimeInstaller: AndroidJavaRuntimeInstaller =
         AndroidJavaRuntimeInstaller(),
     private val launchPreparer: AndroidVanillaLaunchPreparer =
-        AndroidVanillaLaunchPreparer()
+        AndroidVanillaLaunchPreparer(),
+    private val assetInstaller: AssetInstaller = AssetInstaller()
 ) {
-    fun prepareOrThrow(
+    suspend fun prepareOrThrow(
         metadata: MinecraftVersionMetadata,
         request: GameLaunchRequest,
         minecraftRoot: File,
@@ -38,8 +40,14 @@ class GameLaunchReadinessChecker(
         require(layout.clientJar(metadata.id).isFile) {
             "Minecraft client jar is not installed"
         }
-        require(layout.assetIndex(metadata.assetIndexId).isFile) {
+        val assetIndex = layout.assetIndex(metadata.assetIndexId)
+        require(assetIndex.isFile) {
             "Minecraft asset index is not installed"
+        }
+        val missingOrCorruptAsset = assetInstaller.parseIndex(assetIndex)
+            .firstOrNull { asset -> !assetInstaller.isInstalled(asset, minecraftRoot) }
+        require(missingOrCorruptAsset == null) {
+            "Minecraft asset is missing or corrupt: " + missingOrCorruptAsset?.logicalName
         }
         metadata.logging?.let { logging ->
             require(layout.loggingConfig(logging.fileId).isFile) {
