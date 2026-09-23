@@ -97,4 +97,41 @@ class LaunchCommandBuilderTest {
 
         assertTrue(error.message.orEmpty().contains("missing_variable"))
     }
+    @Test
+    fun missingAndroidNativeProviderFailsBeforeProcessLaunch() {
+        val plan = LaunchPlan(
+            versionId = "1.test",
+            mainClass = "net.minecraft.client.main.Main",
+            javaMajorVersion = 21,
+            classpathEntries = emptyList(),
+            jvmArguments = emptyList(),
+            gameArguments = emptyList(),
+            nativeState = NativePlanState.MISSING_ANDROID_PROVIDER
+        )
+        val root = File("/tmp/avero-test")
+
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            LaunchCommandBuilder().resolve(
+                plan = plan,
+                identity = LaunchIdentity(
+                    playerName = "Player",
+                    uuid = "1234",
+                    accessToken = "token"
+                ),
+                environment = LaunchEnvironment(
+                    versionName = "1.test",
+                    versionType = "release",
+                    minecraftRoot = root,
+                    gameDirectory = File(root, "instances/default/game"),
+                    assetsRoot = File(root, "assets"),
+                    assetsIndexName = "1",
+                    nativesDirectory = File(root, "natives"),
+                    libraryDirectory = File(root, "libraries")
+                )
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("native provider"))
+    }
+
 }
