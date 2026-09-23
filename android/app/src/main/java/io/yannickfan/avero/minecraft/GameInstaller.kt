@@ -54,6 +54,15 @@ class GameInstaller(
                 )
             )
             addAll(libraries)
+            metadata.logging?.let { logging ->
+                add(
+                    Triple(
+                        "log_configs/${logging.fileId}",
+                        logging.file,
+                        layout.loggingConfig(logging.fileId)
+                    )
+                )
+            }
         }
 
         tasks.forEachIndexed { index, (label, spec, destination) ->
