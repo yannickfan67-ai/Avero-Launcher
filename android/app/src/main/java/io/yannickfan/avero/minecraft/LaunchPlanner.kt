@@ -16,10 +16,18 @@ class LaunchPlanner(
         require(instance.loader == Loader.VANILLA) {
             "Loader-specific metadata must be normalized before launch planning"
         }
+        require(
+            androidNativeProvider == null ||
+                nativeClassifierPolicy == NativeClassifierPolicy.DISABLED
+        ) {
+            "Use either an Android native provider or Mojang desktop classifiers, not both"
+        }
 
         val allowedLibraries = metadata.libraries.filter {
             rules.isAllowed(it.rules, context)
         }
+
+        val requiresNatives = allowedLibraries.any { it.natives.isNotEmpty() }
 
         val classpath = buildList {
             addAll(androidNativeProvider?.classpathEntries.orEmpty())
@@ -40,11 +48,17 @@ class LaunchPlanner(
             classpathEntries = classpath,
             jvmArguments = jvm,
             gameArguments = rules.resolveArguments(metadata.gameArguments, context),
-            nativeArchives = nativeResolver.resolve(
-                allowedLibraries,
-                context,
-                nativeClassifierPolicy
-            ),
+            requiresNatives = requiresNatives,
+            nativeArchives =
+                if (androidNativeProvider == null) {
+                    nativeResolver.resolve(
+                        allowedLibraries,
+                        context,
+                        nativeClassifierPolicy
+                    )
+                } else {
+                    emptyList()
+                },
             logging = metadata.logging,
             androidNativeProvider = androidNativeProvider
         )
