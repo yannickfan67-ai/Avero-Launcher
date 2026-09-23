@@ -7,15 +7,13 @@ import org.junit.Test
 
 class AndroidJavaRuntimeInstallerTest {
     @Test
-    fun executableJavaIsRecognizedAsInstalled() = withRuntimeHome { root ->
+    fun executableJavaAndJliAreRecognizedAsInstalled() = withRuntimeHome { root ->
         val runtimePackage = requireNotNull(
             AndroidJavaRuntimeCatalog.find(21, RuntimeArch.ARM64)
         )
         val home = root.resolve(runtimePackage.id)
-        val java = home.resolve("bin/java")
-        java.parentFile.mkdirs()
-        java.writeText("#!/bin/sh\nexit 0\n")
-        check(java.setExecutable(true, false))
+        createJava(home, executable = true)
+        createJli(home)
 
         val installed = AndroidJavaRuntimeInstaller().findInstalled(
             runtimePackage,
@@ -23,6 +21,7 @@ class AndroidJavaRuntimeInstallerTest {
         )
 
         assertNotNull(installed)
+        assertNotNull(installed?.jliLibrary)
     }
 
     @Test
@@ -31,10 +30,8 @@ class AndroidJavaRuntimeInstallerTest {
             AndroidJavaRuntimeCatalog.find(21, RuntimeArch.ARM64)
         )
         val home = root.resolve(runtimePackage.id)
-        val java = home.resolve("bin/java")
-        java.parentFile.mkdirs()
-        java.writeText("#!/bin/sh\nexit 0\n")
-        java.setExecutable(false, false)
+        createJava(home, executable = false)
+        createJli(home)
 
         val installed = AndroidJavaRuntimeInstaller().findInstalled(
             runtimePackage,
@@ -42,6 +39,36 @@ class AndroidJavaRuntimeInstallerTest {
         )
 
         assertNull(installed)
+    }
+
+    @Test
+    fun missingJliIsNotRecognizedAsInstalled() = withRuntimeHome { root ->
+        val runtimePackage = requireNotNull(
+            AndroidJavaRuntimeCatalog.find(21, RuntimeArch.ARM64)
+        )
+        val home = root.resolve(runtimePackage.id)
+        createJava(home, executable = true)
+
+        val installed = AndroidJavaRuntimeInstaller().findInstalled(
+            runtimePackage,
+            home
+        )
+
+        assertNull(installed)
+    }
+
+    private fun createJava(home: java.io.File, executable: Boolean) {
+        val java = home.resolve("bin/java")
+        java.parentFile.mkdirs()
+        java.writeText("#!/bin/sh\nexit 0\n")
+        java.setExecutable(executable, false)
+    }
+
+    private fun createJli(home: java.io.File) {
+        val jli = home.resolve("lib/jli/libjli.so")
+        jli.parentFile.mkdirs()
+        jli.writeBytes(byteArrayOf(0x7f, 0x45, 0x4c, 0x46))
+        jli.setWritable(false, false)
     }
 
     private fun withRuntimeHome(block: (java.io.File) -> Unit) {
