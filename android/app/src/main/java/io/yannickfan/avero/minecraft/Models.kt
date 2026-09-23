@@ -102,6 +102,7 @@ data class LaunchPlan(
     val classpathEntries: List<String>,
     val jvmArguments: List<String>,
     val gameArguments: List<String>,
+    val requiresNatives: Boolean = false,
     val nativeArchives: List<NativeArchivePlan> = emptyList(),
     val logging: LoggingSpec? = null,
     val androidNativeProvider: AndroidNativeProviderPlan? = null
