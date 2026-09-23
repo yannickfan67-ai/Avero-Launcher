@@ -48,6 +48,8 @@ class LaunchCommandBuilder {
         identity: LaunchIdentity,
         environment: LaunchEnvironment
     ): ResolvedLaunchCommand {
+        validateNativeReadiness(plan, environment)
+
         val classpathSeparator = File.pathSeparator
         val classpath = plan.classpathEntries
             .map { entry -> File(environment.minecraftRoot, entry).absolutePath }
@@ -92,6 +94,76 @@ class LaunchCommandBuilder {
             },
             gameArguments = plan.gameArguments.map { substitute(it, values) }
         )
+    }
+
+    private fun validateNativeReadiness(
+        plan: LaunchPlan,
+        environment: LaunchEnvironment
+    ) {
+        if (!plan.requiresNatives) return
+
+        val provider = plan.androidNativeProvider
+        if (provider != null) {
+            require(provider.classpathEntries.isNotEmpty()) {
+                "Android native provider has no patched classpath entries"
+            }
+
+            provider.classpathEntries.forEach { relativePath ->
+                val file = managedFile(environment.minecraftRoot, relativePath)
+                require(file.isFile && file.length() > 0L) {
+                    "Android native provider classpath entry is missing: " + file.absolutePath
+                }
+            }
+
+            val providerNatives = managedFile(
+                environment.minecraftRoot,
+                provider.nativeDirectory
+            )
+            require(providerNatives.isDirectory) {
+                "Android native provider directory is missing: " +
+                    providerNatives.absolutePath
+            }
+            require(
+                providerNatives.listFiles()
+                    ?.any { it.isFile && it.name.endsWith(".so") } == true
+            ) {
+                "Android native provider contains no native libraries"
+            }
+            require(
+                environment.nativesDirectory.canonicalFile ==
+                    providerNatives.canonicalFile
+            ) {
+                "Launch natives_directory does not match the installed Android provider"
+            }
+            return
+        }
+
+        require(plan.nativeArchives.isNotEmpty()) {
+            "Android native provider or compatible native archives are required before launch"
+        }
+        require(
+            environment.nativesDirectory.isDirectory &&
+                environment.nativesDirectory.listFiles()
+                    ?.any { it.isFile && it.name.endsWith(".so") } == true
+        ) {
+            "Native archives have not been prepared into natives_directory"
+        }
+    }
+
+    private fun managedFile(root: File, relativePath: String): File {
+        require(relativePath.isNotBlank()) {
+            "Managed launch path is blank"
+        }
+        require(!File(relativePath).isAbsolute) {
+            "Managed launch path must be relative: " + relativePath
+        }
+
+        val canonicalRoot = root.canonicalFile
+        val file = File(canonicalRoot, relativePath).canonicalFile
+        require(file.path.startsWith(canonicalRoot.path + File.separator)) {
+            "Managed launch path escapes the Minecraft root: " + relativePath
+        }
+        return file
     }
 
     private fun substitute(value: String, variables: Map<String, String>): String {
