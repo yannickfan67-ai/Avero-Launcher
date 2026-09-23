@@ -69,6 +69,41 @@ object CallbackBridge {
             ?.coerceAtLeast(1f)
             ?: 1f
 
+    // These declarations are registered by the external LGPL provider's
+    // JNI_OnLoad. They intentionally stay declaration-only in Avero.
+    @JvmStatic
+    external fun nativeSetUseInputStackQueue(useInputStackQueue: Boolean)
+
+    @JvmStatic
+    external fun nativeSendChar(codepoint: Char): Boolean
+
+    @JvmStatic
+    external fun nativeSendCharMods(codepoint: Char, mods: Int): Boolean
+
+    @JvmStatic
+    external fun nativeSendKey(
+        key: Int,
+        scancode: Int,
+        action: Int,
+        mods: Int
+    )
+
+    @JvmStatic
+    external fun nativeSendCursorPos(x: Float, y: Float)
+
+    @JvmStatic
+    external fun nativeSendMouseButton(
+        button: Int,
+        action: Int,
+        mods: Int
+    )
+
+    @JvmStatic
+    external fun nativeSendScroll(xOffset: Double, yOffset: Double)
+
+    @JvmStatic
+    external fun nativeSendScreenSize(width: Int, height: Int)
+
     @JvmStatic
     fun notifyLauncher(
         type: Int,
