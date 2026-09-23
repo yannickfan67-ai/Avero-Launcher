@@ -24,6 +24,9 @@ class LaunchPlanner(
             hasAndroidNativeProvider = androidNativeProvider != null
         )
         val effectiveLibraries = librarySelection.effective
+        val requiresNatives = librarySelection.ruleAllowed.any { library ->
+            library.natives.isNotEmpty() || library.isDesktopNativeArtifact()
+        }
 
         val classpath = buildList {
             addAll(androidNativeProvider?.classpathEntries.orEmpty())
@@ -44,11 +47,17 @@ class LaunchPlanner(
             classpathEntries = classpath,
             jvmArguments = jvm,
             gameArguments = rules.resolveArguments(metadata.gameArguments, context),
-            nativeArchives = nativeResolver.resolve(
-                librarySelection.ruleAllowed,
-                context,
-                nativeClassifierPolicy
-            ),
+            requiresNatives = requiresNatives,
+            nativeArchives =
+                if (androidNativeProvider == null) {
+                    nativeResolver.resolve(
+                        librarySelection.ruleAllowed,
+                        context,
+                        nativeClassifierPolicy
+                    )
+                } else {
+                    emptyList()
+                },
             logging = metadata.logging,
             androidNativeProvider = androidNativeProvider
         )
