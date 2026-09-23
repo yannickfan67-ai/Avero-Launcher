@@ -20,12 +20,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Terminal
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -57,16 +60,15 @@ class MainActivity : ComponentActivity() {
 }
 
 data class NavItem(val label: String, val icon: ImageVector)
-
-data class Project(val name: String, val description: String, val language: String)
+data class VersionEntry(val version: String, val loader: String, val state: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AveroApp() {
     val nav = listOf(
         NavItem("Home", Icons.Rounded.Home),
-        NavItem("Projects", Icons.Rounded.FolderOpen),
-        NavItem("Workspace", Icons.Rounded.Terminal),
+        NavItem("Versions", Icons.Rounded.Storage),
+        NavItem("Downloads", Icons.Rounded.Download),
         NavItem("Settings", Icons.Rounded.Settings)
     )
     var selected by remember { mutableIntStateOf(0) }
@@ -83,7 +85,7 @@ fun AveroApp() {
                         ) {
                             Text("A", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
                         }
-                        Text("  Avero", fontWeight = FontWeight.Bold)
+                        Text("  Avero Launcher", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -103,8 +105,8 @@ fun AveroApp() {
     ) { padding ->
         when (selected) {
             0 -> HomeScreen(padding) { selected = it }
-            1 -> ProjectsScreen(padding)
-            2 -> WorkspaceScreen(padding)
+            1 -> VersionsScreen(padding)
+            2 -> DownloadsScreen(padding)
             else -> SettingsScreen(padding)
         }
     }
@@ -119,41 +121,67 @@ private fun HomeScreen(padding: PaddingValues, navigate: (Int) -> Unit) {
     ) {
         item {
             Text(
-                "Mobile workspace, without the desktop baggage.",
+                "Minecraft: Java Edition on Android.",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "A fresh Android client for projects, repository browsing and future AI-assisted coding tools.",
+                "Manage accounts, versions, loaders and runtime settings from one native launcher.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                    Text("Selected instance", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Minecraft 1.21.4", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Fabric · Java 21 · 4096 MB", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = { }) {
+                            Icon(Icons.Rounded.PlayArrow, null)
+                            Text(" Play")
+                        }
+                        OutlinedButton(onClick = { navigate(1) }) {
+                            Text("Change version")
+                        }
+                    }
+                }
+            }
+        }
+
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickTile(
-                    "Projects",
-                    "Browse local work",
-                    Icons.Rounded.FolderOpen,
+                    "Accounts",
+                    "Microsoft sign-in",
+                    Icons.Rounded.AccountCircle,
                     Modifier.weight(1f)
-                ) { navigate(1) }
+                ) { }
                 QuickTile(
-                    "Workspace",
-                    "Draft & inspect",
-                    Icons.Rounded.Code,
+                    "Mods & loaders",
+                    "Fabric / Forge / NeoForge",
+                    Icons.Rounded.Extension,
                     Modifier.weight(1f)
-                ) { navigate(2) }
+                ) { }
             }
         }
-        item { SectionTitle("What this build establishes") }
+
+        item { SectionTitle("Launcher pipeline") }
         items(
             listOf(
-                "Native Compose UI — no WebView shell",
-                "Adaptive layout baseline for Android 17",
-                "Independent package and codebase",
-                "Room for repo, Git and AI integrations later"
+                "Microsoft account authentication",
+                "Game metadata and asset download",
+                "Java runtime selection and management",
+                "Loader and mod installation",
+                "Launch arguments, renderer and logs"
             )
-        ) { FeatureRow(it) }
+        ) { StatusRow(it, "planned") }
     }
 }
 
@@ -183,40 +211,38 @@ private fun QuickTile(
 }
 
 @Composable
-private fun ProjectsScreen(padding: PaddingValues) {
-    val projects = listOf(
-        Project("Android sandbox", "New native mobile experiments", "Kotlin"),
-        Project("Website", "Product site and release landing page", "HTML / CSS"),
-        Project("Scratchpad", "Temporary notes and snippets", "Text")
+private fun VersionsScreen(padding: PaddingValues) {
+    val versions = listOf(
+        VersionEntry("1.21.4", "Fabric", "Ready"),
+        VersionEntry("1.20.1", "Forge", "Not installed"),
+        VersionEntry("1.8.9", "Vanilla", "Not installed")
     )
+
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
+            Text("Versions", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Projects",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                "Installed and available Minecraft instances.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        items(projects) { project ->
+
+        items(versions) { entry ->
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Row(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Rounded.FolderOpen,
-                        null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(Icons.Rounded.Storage, null, tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                        Text(project.name, fontWeight = FontWeight.SemiBold)
-                        Text(project.description, style = MaterialTheme.typography.bodySmall)
+                        Text(entry.version, fontWeight = FontWeight.SemiBold)
+                        Text(entry.loader, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text(project.language, style = MaterialTheme.typography.labelSmall)
+                    Text(entry.state, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -224,56 +250,40 @@ private fun ProjectsScreen(padding: PaddingValues) {
 }
 
 @Composable
-private fun WorkspaceScreen(padding: PaddingValues) {
+private fun DownloadsScreen(padding: PaddingValues) {
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
+            Text("Downloads", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Workspace",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                "Game files, assets, libraries, loaders and runtimes will appear here.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        item {
-            FeatureCard(
-                Icons.Rounded.Code,
-                "Code workspace",
-                "A mobile-first surface for snippets, diffs and repository context."
-            )
-        }
-        item {
-            FeatureCard(
-                Icons.Rounded.Memory,
-                "AI slot",
-                "Reserved for coding assistance and repository analysis. No provider is hard-wired yet."
-            )
-        }
-        item {
-            FeatureCard(
-                Icons.Rounded.Terminal,
-                "Local tools",
-                "Designed so Git, terminal bridges or device-side utilities can be added cleanly."
-            )
-        }
+        item { FeatureCard(Icons.Rounded.Download, "Version files", "Minecraft metadata, client jar, libraries and assets.") }
+        item { FeatureCard(Icons.Rounded.Extension, "Loaders", "Fabric, Forge, NeoForge and Quilt installation tasks.") }
+        item { FeatureCard(Icons.Rounded.Storage, "Java runtimes", "Managed Java runtimes for the selected Minecraft version.") }
     }
 }
 
 @Composable
 private fun SettingsScreen(padding: PaddingValues) {
-    Column(Modifier.fillMaxSize().padding(padding).padding(20.dp)) {
-        Text(
-            "Settings",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(16.dp))
-        FeatureRow("Avero Android 0.1.0")
-        FeatureRow("Package: io.yannickfan.avero")
-        FeatureRow("Theme follows the system")
-        FeatureRow("No account or telemetry layer yet")
+    LazyColumn(
+        Modifier.fillMaxSize().padding(padding),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        }
+        item { StatusRow("Memory allocation", "4096 MB") }
+        item { StatusRow("Java runtime", "Automatic") }
+        item { StatusRow("Renderer", "Automatic") }
+        item { StatusRow("Game directory", "Avero managed") }
+        item { StatusRow("Package", "io.yannickfan.avero") }
     }
 }
 
@@ -290,18 +300,15 @@ private fun FeatureCard(icon: ImageVector, title: String, description: String) {
 }
 
 @Composable
-private fun FeatureRow(text: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(99.dp))
-                .padding(4.dp)
-        )
-        Text(
-            text,
-            Modifier.padding(start = 12.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun StatusRow(name: String, value: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(name, Modifier.weight(1f), fontWeight = FontWeight.Medium)
+            Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
