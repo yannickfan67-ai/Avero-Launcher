@@ -3,11 +3,14 @@ package io.yannickfan.avero.runtime
 import android.os.Build
 import io.yannickfan.avero.minecraft.DownloadSpec
 
-enum class RuntimeArch(val assetToken: String) {
-    ARM("arm"),
-    ARM64("arm64"),
-    X86("x86"),
-    X86_64("x86_64");
+enum class RuntimeArch(
+    val assetToken: String,
+    val androidAbi: String
+) {
+    ARM("arm", "armeabi-v7a"),
+    ARM64("arm64", "arm64-v8a"),
+    X86("x86", "x86"),
+    X86_64("x86_64", "x86_64");
 
     companion object {
         fun fromAbi(abi: String): RuntimeArch? = when (abi.lowercase()) {
