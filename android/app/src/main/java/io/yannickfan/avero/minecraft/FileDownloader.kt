@@ -66,6 +66,8 @@ class FileDownloader(
                 delay(backoff)
             }
         }
+
+        error("Download retry loop exited unexpectedly")
     }
 
     private suspend fun downloadAttempt(
