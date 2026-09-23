@@ -1,5 +1,8 @@
 package io.yannickfan.avero.minecraft
 
+import io.yannickfan.avero.runtime.AndroidJavaRuntimeCatalog
+import io.yannickfan.avero.runtime.AndroidJavaRuntimeInstaller
+import io.yannickfan.avero.runtime.RuntimeArch
 import java.io.File
 
 data class RuntimeInstallation(
@@ -23,16 +26,18 @@ enum class RuntimeState {
 }
 
 class RuntimeManager(
-    private val managedRoot: File? = null
+    private val managedRoot: File? = null,
+    private val installer: AndroidJavaRuntimeInstaller = AndroidJavaRuntimeInstaller()
 ) {
     fun requirementFor(
         metadata: MinecraftVersionMetadata,
         architecture: String = System.getProperty("os.arch") ?: "unknown"
     ): RuntimeRequirement {
         val major = metadata.javaMajorVersion
-        val normalizedAbi = normalizeAndroidAbi(architecture)
+        val arch = resolveRuntimeArch(architecture)
+        val runtimePackage = arch?.let { AndroidJavaRuntimeCatalog.find(major, it) }
 
-        if (major !in SUPPORTED_JAVA_MAJORS || normalizedAbi == null) {
+        if (arch == null || runtimePackage == null) {
             return RuntimeRequirement(
                 javaMajorVersion = major,
                 architecture = architecture,
@@ -40,10 +45,10 @@ class RuntimeManager(
             )
         }
 
-        val installation = discover(major, normalizedAbi)
+        val installation = discover(major, architecture)
         return RuntimeRequirement(
             javaMajorVersion = major,
-            architecture = normalizedAbi,
+            architecture = arch.assetToken,
             state = if (installation != null) {
                 RuntimeState.AVAILABLE
             } else {
@@ -58,53 +63,28 @@ class RuntimeManager(
         architecture: String
     ): RuntimeInstallation? {
         val root = managedRoot ?: return null
-        if (javaMajorVersion !in SUPPORTED_JAVA_MAJORS) return null
-
-        val normalizedAbi = normalizeAndroidAbi(architecture) ?: return null
-        val home = File(root, "$javaMajorVersion/$normalizedAbi")
-        val executable = File(home, "bin/java")
-        val release = File(home, "release")
-
-        if (!executable.isFile || !executable.canExecute() || !release.isFile) return null
-        if (readJavaMajor(release) != javaMajorVersion) return null
+        val arch = resolveRuntimeArch(architecture) ?: return null
+        val runtimePackage = AndroidJavaRuntimeCatalog.find(javaMajorVersion, arch) ?: return null
+        val runtimeHome = File(root, runtimePackage.id)
+        val installed = installer.findInstalled(runtimePackage, runtimeHome) ?: return null
+        if (!installed.javaExecutable.canExecute()) return null
 
         return RuntimeInstallation(
-            javaMajorVersion = javaMajorVersion,
-            architecture = normalizedAbi,
-            home = home,
-            javaExecutable = executable
+            javaMajorVersion = runtimePackage.majorVersion,
+            architecture = runtimePackage.arch.assetToken,
+            home = installed.home,
+            javaExecutable = installed.javaExecutable
         )
     }
 
     companion object {
-        private val SUPPORTED_JAVA_MAJORS = setOf(8, 17, 21)
-
-        fun normalizeAndroidAbi(architecture: String): String? {
-            val value = architecture.lowercase()
-            return when {
-                value == "arm64-v8a" ||
-                    value.contains("aarch64") ||
-                    value == "arm64" -> "arm64-v8a"
-                value == "x86_64" ||
-                    value == "amd64" -> "x86_64"
+        fun resolveRuntimeArch(architecture: String): RuntimeArch? =
+            RuntimeArch.fromAbi(architecture) ?: when (architecture.lowercase()) {
+                "aarch64", "arm64" -> RuntimeArch.ARM64
+                "armv7l", "armv7", "arm" -> RuntimeArch.ARM
+                "amd64" -> RuntimeArch.X86_64
+                "i386", "i486", "i586", "i686" -> RuntimeArch.X86
                 else -> null
             }
-        }
-
-        private fun readJavaMajor(release: File): Int? {
-            val version = release.useLines { lines ->
-                lines.firstOrNull { it.startsWith("JAVA_VERSION=") }
-            }?.substringAfter('=')
-                ?.trim()
-                ?.trim('"')
-                ?.takeIf { it.isNotBlank() }
-                ?: return null
-
-            return if (version.startsWith("1.")) {
-                version.substringAfter("1.").substringBefore('.').toIntOrNull()
-            } else {
-                version.substringBefore('.').substringBefore('-').toIntOrNull()
-            }
-        }
     }
 }
