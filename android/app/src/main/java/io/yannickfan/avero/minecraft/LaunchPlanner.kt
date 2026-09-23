@@ -17,13 +17,20 @@ class LaunchPlanner(
             "Loader-specific metadata must be normalized before launch planning"
         }
 
-        val allowedLibraries = metadata.libraries.filter {
-            rules.isAllowed(it.rules, context)
+        val librarySelection = LibrarySelector(rules).select(
+            libraries = metadata.libraries,
+            context = context,
+            nativeClassifierPolicy = nativeClassifierPolicy,
+            hasAndroidNativeProvider = androidNativeProvider != null
+        )
+        val effectiveLibraries = librarySelection.effective
+        val requiresNatives = librarySelection.ruleAllowed.any { library ->
+            library.natives.isNotEmpty() || library.isDesktopNativeArtifact()
         }
 
         val classpath = buildList {
             addAll(androidNativeProvider?.classpathEntries.orEmpty())
-            allowedLibraries.mapNotNullTo(this) { library ->
+            effectiveLibraries.mapNotNullTo(this) { library ->
                 library.artifact?.path?.let(::libraryClasspathPath)
             }
             add("versions/${metadata.id}/${metadata.id}.jar")
@@ -42,11 +49,17 @@ class LaunchPlanner(
             classpathEntries = classpath,
             jvmArguments = jvm,
             gameArguments = rules.resolveArguments(metadata.gameArguments, context),
-            nativeArchives = nativeResolver.resolve(
-                allowedLibraries,
-                context,
-                nativeClassifierPolicy
-            ),
+            requiresNatives = requiresNatives,
+            nativeArchives =
+                if (androidNativeProvider == null) {
+                    nativeResolver.resolve(
+                        librarySelection.ruleAllowed,
+                        context,
+                        nativeClassifierPolicy
+                    )
+                } else {
+                    emptyList()
+                },
             logging = metadata.logging,
             androidNativeProvider = androidNativeProvider
         )
