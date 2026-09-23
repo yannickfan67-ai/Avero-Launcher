@@ -17,14 +17,14 @@ class NativeLibraryResolver(
 
         return buildList {
             for (library in libraries) {
-            if (!rules.isAllowed(library.rules, context)) continue
+                if (!rules.isAllowed(library.rules, context)) continue
 
-            val template = library.natives[context.osName] ?: continue
-            val classifier = template.replace(
-                "${arch}",
-                MinecraftPlatform.classifierArchToken(context.osArch)
-            )
-            val download = library.classifiers[classifier] ?: continue
+                val template = library.natives[context.osName] ?: continue
+                val classifier = template.replace(
+                    "${arch}",
+                    MinecraftPlatform.classifierArchToken(context.osArch)
+                )
+                val download = library.classifiers[classifier] ?: continue
 
                 add(
                     NativeArchivePlan(
