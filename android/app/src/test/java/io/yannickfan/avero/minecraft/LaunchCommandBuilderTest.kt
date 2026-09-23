@@ -1,6 +1,7 @@
 package io.yannickfan.avero.minecraft
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -48,4 +49,41 @@ class LaunchCommandBuilderTest {
         assertTrue(command.jvmArguments.joinToString(" ").contains("libraries/a.jar"))
         assertEquals(listOf("--username", "NoxVala", "--uuid", "1234"), command.gameArguments)
     }
+    @Test
+    fun unresolvedVariableFailsBeforeProcessLaunch() {
+        val variable = 36.toChar().toString() + "{missing_variable}"
+        val plan = LaunchPlan(
+            versionId = "1.test",
+            mainClass = "net.minecraft.client.main.Main",
+            javaMajorVersion = 21,
+            classpathEntries = emptyList(),
+            jvmArguments = listOf(variable),
+            gameArguments = emptyList()
+        )
+        val root = File("/tmp/avero-test")
+
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            LaunchCommandBuilder().resolve(
+                plan = plan,
+                identity = LaunchIdentity(
+                    playerName = "Player",
+                    uuid = "1234",
+                    accessToken = "token"
+                ),
+                environment = LaunchEnvironment(
+                    versionName = "1.test",
+                    versionType = "release",
+                    minecraftRoot = root,
+                    gameDirectory = File(root, "instances/default/game"),
+                    assetsRoot = File(root, "assets"),
+                    assetsIndexName = "1",
+                    nativesDirectory = File(root, "natives"),
+                    libraryDirectory = File(root, "libraries")
+                )
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("missing_variable"))
+    }
+
 }
