@@ -41,6 +41,11 @@ class GameLaunchRequestStoreTest {
                 nowEpochMs = 10_001
             )
             assertEquals(request, consumed)
+            assertFalse(
+                root.resolve(GameLaunchRequestStore.DIRECTORY_NAME)
+                    .resolve("${request.requestId}.launch")
+                    .exists()
+            )
 
             var failed = false
             try {

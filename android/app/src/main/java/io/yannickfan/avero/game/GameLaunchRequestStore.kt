@@ -66,8 +66,10 @@ class GameLaunchRequestStore(
         val request = try {
             decode(file)
         } finally {
-            // One-shot by design: malformed/expired requests are destroyed too.
-            file.delete()
+            // A request is only one-shot if the source file is actually gone.
+            check(file.delete() || !file.exists()) {
+                "Could not consume launch request"
+            }
         }
 
         require(request.requestId == requestId) {
