@@ -175,7 +175,7 @@ private fun GameLaunchScreen(
         }
 
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             factory = { viewContext ->
                 SurfaceView(viewContext).also { view ->
                     view.holder.addCallback(
