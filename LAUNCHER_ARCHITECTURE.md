@@ -14,6 +14,8 @@ Responsibilities:
 - Entitlement / ownership checks
 - Local account session storage and refresh
 
+Tokens must remain in app-private/session state and must never be copied into Compose text, persistent launch-request diagnostics, or GitHub Actions artifacts.
+
 ### 2. Version metadata
 Responsibilities:
 
@@ -67,8 +69,8 @@ The launch service should:
 6. Build JVM and game arguments.
 7. Apply renderer / compatibility configuration.
 8. Start the Java process.
-9. Stream stdout / stderr to the launcher log UI.
-10. Save crash and exit diagnostics.
+9. Stream safe stdout / stderr state to the launcher log UI.
+10. Save crash and exit diagnostics without credentials.
 
 ## Android-specific constraints
 
@@ -84,12 +86,15 @@ Desktop launchers cannot simply be copied to Android. Avero needs explicit handl
 
 ## Current milestone
 
-The native Compose shell, Microsoft authentication pipeline, official Mojang metadata/download pipeline, managed Android OpenJDK installer, Android LWJGL provider installation and native JLI/JVM bridge are established and covered by CI.
+The native Compose shell, Microsoft authentication pipeline, official Mojang metadata/download pipeline, managed Android OpenJDK installer, Android LWJGL provider installation, native JLI/JVM bridge, isolated `:game` process wiring, Surface hand-off, library path normalization, asset integrity checks, Android-native filtering, and launch-readiness validation are implemented and covered by JVM/Android CI tests.
 
-The next launch milestone is the first full vanilla game process:
+The remaining work for the first complete vanilla launch is end-to-end Android validation of the patched LWJGL/GLFW provider reaching the Minecraft main class on a supported device. Until that is demonstrated, the launcher keeps Play gated behind readiness checks and reports safe failure diagnostics instead of claiming launch success.
 
-1. Persist/refresh account sessions without exposing tokens to UI logs.
+The next launch milestone is:
+
+1. Consume a one-time authenticated launch request in `:game` and delete it after read / expiry.
 2. Combine the installed game, runtime and Android LWJGL provider into a launch-ready instance.
-3. Run Minecraft in an isolated `:game` Android process.
+3. Run Minecraft in the isolated `:game` Android process.
 4. Attach a Surface and renderer bridge for GLFW/LWJGL.
-5. Stream launch/crash diagnostics back to the launcher UI.
+5. Stream launch/crash diagnostics back to the launcher UI without tokens.
+6. Validate the full path on a supported Android device before enabling unrestricted Play.
