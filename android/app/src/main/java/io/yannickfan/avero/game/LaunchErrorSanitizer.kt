@@ -18,7 +18,7 @@ internal fun sanitizeLaunchError(t: Throwable): String {
             "clientSecret=<redacted>"
         )
         .replace(
-            Regex("(?i)authorization\\s*[:=]\\s*\\S+"),
+            Regex("(?i)authorization\\s*[:=]\\s*(?:bearer\\s+)?\\S+"),
             "Authorization=<redacted>"
         )
         .replace(
