@@ -68,10 +68,11 @@ private fun GameLaunchScreen(requestId: String?, filesRoot: File) {
         }
     }
 
-    LaunchedEffect(execution, currentSurface) {
+    LaunchedEffect(execution, currentSurface, surfaceSize) {
         val prepared = execution
         val surface = currentSurface
-        if (prepared != null && surface != null && surface.isValid) {
+        val (width, height) = surfaceSize
+        if (prepared != null && surface != null && surface.isValid && width > 0 && height > 0) {
             bridgeReady = false
             status = try {
                 AndroidLwjglBridge.prepare(prepared.providerNativeDirectory, surface)
@@ -80,6 +81,8 @@ private fun GameLaunchScreen(requestId: String?, filesRoot: File) {
             } catch (t: Throwable) {
                 "Renderer bridge failed: ${sanitizeLaunchError(t)}"
             }
+        } else {
+            bridgeReady = false
         }
     }
 
