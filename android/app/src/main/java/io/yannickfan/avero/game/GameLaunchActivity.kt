@@ -86,7 +86,7 @@ private fun GameLaunchScreen(
             execution = prepared
             "Launch context validated. Waiting for Android Surface."
         } catch (t: Throwable) {
-            "Launch preparation failed: ${safeError(t)}"
+            "Launch preparation failed: ${sanitizeLaunchError(t)}"
         }
     }
 
@@ -103,7 +103,7 @@ private fun GameLaunchScreen(
                 bridgeReady = true
                 "Android LWJGL bridge ready. Minecraft JVM can start."
             } catch (t: Throwable) {
-                "Renderer bridge failed: ${safeError(t)}"
+                "Renderer bridge failed: ${sanitizeLaunchError(t)}"
             }
         }
     }
@@ -161,7 +161,7 @@ private fun GameLaunchScreen(
                         status = "Minecraft JVM exited with code $exitCode"
                     } catch (t: Throwable) {
                         if (t is CancellationException) throw t
-                        status = "JVM launch failed: ${safeError(t)}"
+                        status = "JVM launch failed: ${sanitizeLaunchError(t)}"
                     } finally {
                         launching = false
                     }
@@ -211,15 +211,4 @@ private fun GameLaunchScreen(
             }
         )
     }
-}
-
-private fun safeError(t: Throwable): String {
-    val raw = t.message?.takeIf { it.isNotBlank() }
-        ?: t::class.java.simpleName
-    return raw
-        .replace(
-            Regex("(?i)access[_ -]?token\\s*[:=]\\s*\\S+"),
-            "accessToken=<redacted>"
-        )
-        .take(500)
 }
