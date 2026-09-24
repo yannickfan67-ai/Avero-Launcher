@@ -68,7 +68,11 @@ private fun GameLaunchScreen(requestId: String?, filesRoot: File) {
         }
     }
 
-    LaunchedEffect(execution, currentSurface, surfaceSize) {
+    LaunchedEffect(execution, currentSurface, surfaceSize, launching) {
+        // Keep the provider window stable while the game JVM is active.
+        // Surface destruction still releases the window from its callback.
+        if (launching) return@LaunchedEffect
+
         val prepared = execution
         val surface = currentSurface
         val (width, height) = surfaceSize
