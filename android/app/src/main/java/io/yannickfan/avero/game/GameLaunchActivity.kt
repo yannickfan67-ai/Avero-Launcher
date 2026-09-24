@@ -34,53 +34,31 @@ class GameLaunchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         val requestId = intent.getStringExtra(EXTRA_REQUEST_ID)
-        setContent {
-            AveroTheme {
-                GameLaunchScreen(
-                    requestId = requestId,
-                    filesRoot = filesDir
-                )
-            }
-        }
+        setContent { AveroTheme { GameLaunchScreen(requestId, filesDir) } }
     }
 
-    companion object {
-        const val EXTRA_REQUEST_ID = "launch_request_id"
-    }
+    companion object { const val EXTRA_REQUEST_ID = "launch_request_id" }
 }
 
 @Composable
-private fun GameLaunchScreen(
-    requestId: String?,
-    filesRoot: File
-) {
+private fun GameLaunchScreen(requestId: String?, filesRoot: File) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    var status by remember {
-        mutableStateOf("Validating one-time launch request…")
-    }
-    var execution by remember {
-        mutableStateOf<PreparedGameExecution?>(null)
-    }
-    var currentSurface by remember {
-        mutableStateOf<Surface?>(null)
-    }
+    var status by remember { mutableStateOf("Validating one-time launch request…") }
+    var execution by remember { mutableStateOf<PreparedGameExecution?>(null) }
+    var currentSurface by remember { mutableStateOf<Surface?>(null) }
+    var surfaceSize by remember { mutableStateOf(0 to 0) }
     var bridgeReady by remember { mutableStateOf(false) }
     var launching by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        org.lwjgl.glfw.CallbackBridge.initialize(context)
-    }
+    LaunchedEffect(Unit) { org.lwjgl.glfw.CallbackBridge.initialize(context) }
 
     LaunchedEffect(requestId) {
         if (requestId.isNullOrBlank()) {
             status = "Launch preparation failed: Launch request ID is missing"
             return@LaunchedEffect
         }
-
         status = try {
             val prepared = GameExecutionSession(filesRoot).prepare(requestId)
             execution = prepared
@@ -96,10 +74,7 @@ private fun GameLaunchScreen(
         if (prepared != null && surface != null && surface.isValid) {
             bridgeReady = false
             status = try {
-                AndroidLwjglBridge.prepare(
-                    nativeDirectory = prepared.providerNativeDirectory,
-                    surface = surface
-                )
+                AndroidLwjglBridge.prepare(prepared.providerNativeDirectory, surface)
                 bridgeReady = true
                 "Android LWJGL bridge ready. Minecraft JVM can start."
             } catch (t: Throwable) {
@@ -112,52 +87,30 @@ private fun GameLaunchScreen(
         modifier = Modifier.fillMaxSize().padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            "Avero Game Process",
-            style = MaterialTheme.typography.headlineSmall
-        )
+        Text("Avero Game Process", style = MaterialTheme.typography.headlineSmall)
         Text(status)
-
         execution?.summary?.let { summary ->
-            Text(
-                "Minecraft ${summary.versionId} · " +
-                    "Java ${summary.javaMajor} · " +
-                    "${summary.classpathEntries} classpath entries"
-            )
+            Text("Minecraft ${summary.versionId} · Java ${summary.javaMajor} · ${summary.classpathEntries} classpath entries")
             Text("Player: ${summary.playerName}")
         }
-
-        val size = if (currentSurface?.isValid == true) {
-            GameSurfaceBridge.size()
-        } else {
-            0 to 0
-        }
         Text(
-            if (size.first > 0 && size.second > 0) {
-                "Android Surface: ${size.first}×${size.second}"
+            if (surfaceSize.first > 0 && surfaceSize.second > 0) {
+                "Android Surface: ${surfaceSize.first}×${surfaceSize.second}"
             } else {
                 "Waiting for Android Surface"
             },
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
         Button(
-            enabled =
-                bridgeReady &&
-                    !launching &&
-                    execution != null &&
-                    size.first > 0 &&
-                    size.second > 0,
+            enabled = bridgeReady && !launching && execution != null && surfaceSize.first > 0 && surfaceSize.second > 0,
             onClick = {
                 val prepared = execution ?: return@Button
+                val launchSize = surfaceSize
                 launching = true
                 status = "Starting Minecraft JVM…"
                 scope.launch {
                     try {
-                        val exitCode = prepared.launch(
-                            surfaceWidth = size.first,
-                            surfaceHeight = size.second
-                        )
+                        val exitCode = prepared.launch(launchSize.first, launchSize.second)
                         status = "Minecraft JVM exited with code $exitCode"
                     } catch (t: Throwable) {
                         if (t is CancellationException) throw t
@@ -167,46 +120,32 @@ private fun GameLaunchScreen(
                     }
                 }
             }
-        ) {
-            Text(
-                if (launching) "Minecraft is running…"
-                else "Start Minecraft JVM"
-            )
-        }
+        ) { Text(if (launching) "Minecraft is running…" else "Start Minecraft JVM") }
 
         AndroidView(
             modifier = Modifier.weight(1f),
             factory = { viewContext ->
                 SurfaceView(viewContext).also { view ->
-                    view.holder.addCallback(
-                        object : SurfaceHolder.Callback {
-                            override fun surfaceCreated(
-                                holder: SurfaceHolder
-                            ) {
-                                GameSurfaceBridge.attach(holder.surface)
-                                currentSurface = holder.surface
-                            }
-
-                            override fun surfaceChanged(
-                                holder: SurfaceHolder,
-                                format: Int,
-                                width: Int,
-                                height: Int
-                            ) {
-                                GameSurfaceBridge.attach(holder.surface)
-                                currentSurface = holder.surface
-                            }
-
-                            override fun surfaceDestroyed(
-                                holder: SurfaceHolder
-                            ) {
-                                bridgeReady = false
-                                AndroidLwjglBridge.release()
-                                GameSurfaceBridge.detach()
-                                currentSurface = null
-                            }
+                    view.holder.addCallback(object : SurfaceHolder.Callback {
+                        override fun surfaceCreated(holder: SurfaceHolder) {
+                            GameSurfaceBridge.attach(holder.surface)
+                            currentSurface = holder.surface
                         }
-                    )
+
+                        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                            GameSurfaceBridge.attach(holder.surface)
+                            currentSurface = holder.surface
+                            surfaceSize = width to height
+                        }
+
+                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                            bridgeReady = false
+                            AndroidLwjglBridge.release()
+                            GameSurfaceBridge.detach()
+                            currentSurface = null
+                            surfaceSize = 0 to 0
+                        }
+                    })
                 }
             }
         )
