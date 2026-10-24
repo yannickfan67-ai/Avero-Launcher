@@ -1,0 +1,62 @@
+name: Android download-only release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'release:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Test, lint and build
+        working-directory: android
+        run: gradle testDebugUnitTest lintDebug assembleDebug --stacktrace
+      - name: Verify compiled distribution
+        run: python scripts/verify-download-only.py
+      - name: Prepare test APK and checksum
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/Avero-0.2.0-download-only-debug.apk
+          cd release
+          sha256sum *.apk > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v0.2.0-download-only
+          cat > release-notes.md <<'NOTES'
+          Avero 0.2.0-download-only is a native Android file downloader, with version search, persistent queue, pause/resume, SHA-1 verification, repair and JSON report export.
+
+          Login, account storage, game Activities, the JVM bridge and native renderer code are excluded from this APK. Downloading files does not grant a Minecraft license. Gameplay is not provided.
+
+          This is a debug-signed TEST APK for Android 8.0+. It is not a store-signed production release. Debug signing certificates may differ from an earlier test APK; Android can reject an in-place update in that case. Preserve any important local data before changing installations. No production signing key is embedded in the repository.
+
+          NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+          NOTES
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+            test "$(git rev-parse "${TAG}^{commit}")" = "$GITHUB_SHA"
+            gh release upload "$TAG" release/* --clobber
+          else
+            gh release create "$TAG" release/* --target "$GITHUB_SHA" --title "Avero 0.2.0 · download-only test APK" --notes-file release-notes.md --prerelease
+          fi

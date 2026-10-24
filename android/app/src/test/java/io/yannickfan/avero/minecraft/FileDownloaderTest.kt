@@ -62,6 +62,7 @@ class FileDownloaderTest {
 
             runBlocking {
                 FileDownloader(
+                    allowLocalHttp = true,
                     maxAttempts = 3,
                     initialBackoffMs = 1
                 ).download(spec, destination)
@@ -99,6 +100,7 @@ class FileDownloaderTest {
             val destination = File(root, "payload.bin")
             runBlocking {
                 FileDownloader(
+                    allowLocalHttp = true,
                     maxAttempts = 3,
                     initialBackoffMs = 1
                 ).download(
@@ -136,6 +138,7 @@ class FileDownloaderTest {
             runBlocking {
                 try {
                     FileDownloader(
+                    allowLocalHttp = true,
                         maxAttempts = 4,
                         initialBackoffMs = 1
                     ).download(
@@ -178,6 +181,7 @@ class FileDownloaderTest {
             runBlocking {
                 try {
                     FileDownloader(
+                    allowLocalHttp = true,
                         maxAttempts = 1,
                         initialBackoffMs = 1
                     ).download(
@@ -216,7 +220,7 @@ class FileDownloaderTest {
                 gitBlobSha1 = gitBlobSha1(payload)
             )
 
-            val valid = runBlocking { FileDownloader().isValid(spec, file) }
+            val valid = runBlocking { FileDownloader(allowLocalHttp = true).isValid(spec, file) }
             assertTrue(valid)
         } finally {
             root.deleteRecursively()

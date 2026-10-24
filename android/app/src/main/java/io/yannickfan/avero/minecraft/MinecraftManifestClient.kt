@@ -6,6 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 class MinecraftManifestClient(
     private val manifestUrl: String = VERSION_MANIFEST_V2
@@ -15,28 +16,38 @@ class MinecraftManifestClient(
     }
 
     suspend fun fetchVersion(summary: MinecraftVersionSummary): MinecraftVersionMetadata =
-        fetchVersion(summary.metadataUrl)
+        withContext(Dispatchers.IO) {
+            val text = getText(summary.metadataUrl, 8 * 1024 * 1024)
+            val expected = requireNotNull(summary.sha1) { "Version metadata has no digest" }
+            require(expected.matches(Regex("[a-fA-F0-9]{40}"))) { "Invalid metadata digest" }
+            val actual = MessageDigest.getInstance("SHA-1").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            check(actual.equals(expected, true)) { "Version metadata SHA-1 mismatch" }
+            parseVersion(JSONObject(text)).also { require(it.id == summary.id) { "Version ID mismatch" } }
+        }
 
     suspend fun fetchVersion(metadataUrl: String): MinecraftVersionMetadata =
         withContext(Dispatchers.IO) {
             parseVersion(JSONObject(getText(metadataUrl)))
         }
 
-    private fun getText(url: String): String {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 15_000
-            readTimeout = 30_000
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "Avero-Launcher/0.1")
-        }
+    private fun getText(url: String, maxBytes: Int = 16 * 1024 * 1024): String {
+        val connection = DownloadPolicy.open(url)
         try {
-            val code = connection.responseCode
-            if (code !in 200..299) error("HTTP $code from $url")
-            return connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
+            check(connection.responseCode == 200) { "HTTP ${connection.responseCode} while loading metadata" }
+            require(connection.contentLengthLong <= maxBytes) { "Metadata response is too large" }
+            val bytes = connection.inputStream.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(32768)
+                while (true) {
+                    val n = input.read(buffer); if (n < 0) break
+                    require(output.size() + n <= maxBytes) { "Metadata response is too large" }
+                    output.write(buffer, 0, n)
+                }
+                output.toByteArray()
+            }
+            require(bytes.size <= maxBytes) { "Metadata response is too large" }
+            return bytes.toString(Charsets.UTF_8)
+        } finally { connection.disconnect() }
     }
 
     companion object {

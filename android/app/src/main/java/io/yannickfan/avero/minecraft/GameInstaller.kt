@@ -5,7 +5,9 @@ import java.io.File
 data class InstallProgress(
     val completedFiles: Int,
     val totalFiles: Int,
-    val currentFile: String
+    val currentFile: String,
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long? = null
 )
 
 data class CoreInstallResult(
@@ -74,7 +76,9 @@ class GameInstaller(
         tasks.forEachIndexed { index, (label, spec, destination) ->
             onProgress(InstallProgress(index, tasks.size, label))
             if (!downloader.isValid(spec, destination)) {
-                downloader.download(spec, destination)
+                downloader.download(spec, destination) { bytes, total ->
+                    onProgress(InstallProgress(index, tasks.size, label, bytes, total))
+                }
             }
             onProgress(InstallProgress(index + 1, tasks.size, label))
         }

@@ -2,9 +2,15 @@
 
 Avero's own source code is licensed under the MIT License. Third-party components keep their own licenses.
 
-## Android OpenJDK runtime packages
+## Components in 0.2.0-download-only
 
-Avero can download Android OpenJDK runtime packages built by:
+The shipping application uses AndroidX Activity/Lifecycle/Compose and Kotlin coroutines under their published Apache 2.0 licenses. Unit tests use JUnit and org.json; they are not included as application runtime dependencies. Consult their Maven metadata for complete notices.
+
+The runtime, native-provider and extraction components below describe historical source under `legacy/`. They are not compiled, bundled or downloaded by the current download-only application.
+
+## Historical Android OpenJDK runtime packages
+
+The historical development implementation could download Android OpenJDK runtime packages built by:
 
 - Project: `AngelAuraMC/angelauramc-openjdk-build`
 - Upstream: https://github.com/AngelAuraMC/angelauramc-openjdk-build
@@ -18,7 +24,7 @@ Avero's runtime catalog stores upstream URLs, expected byte sizes and SHA-256 ha
 
 ## Android LWJGL native provider
 
-Avero can download Android LWJGL bridge AARs from:
+The historical development implementation could download Android LWJGL bridge AARs from:
 
 - Project: `AngelAuraMC/Amethyst-Android`
 - Upstream source: https://github.com/AngelAuraMC/Amethyst-Android
@@ -32,7 +38,7 @@ The provider remains replaceable on disk rather than being relicensed or copied 
 
 ## Archive libraries
 
-Avero uses these libraries to extract runtime `.tar.xz` packages:
+The historical implementation used these libraries to extract runtime `.tar.xz` packages:
 
 - Apache Commons Compress — Apache License 2.0
 - XZ for Java — 0BSD
