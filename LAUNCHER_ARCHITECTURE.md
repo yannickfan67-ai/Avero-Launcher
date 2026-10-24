@@ -1,3 +1,5 @@
+> **Historical development documentation.** The current download-only release excludes authentication and game execution. Refer to the root README for shipped functionality.
+
 # Avero Launcher architecture
 
 Avero is a Minecraft: Java Edition launcher for Android.

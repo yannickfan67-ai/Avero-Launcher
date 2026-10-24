@@ -3,24 +3,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val averoMicrosoftClientId = System.getenv("AVERO_MS_CLIENT_ID") ?: ""
 
 android {
     namespace = "io.yannickfan.avero"
     compileSdk = 37
-    ndkVersion = "29.0.14206865"
 
     defaultConfig {
         applicationId = "io.yannickfan.avero"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
-        buildConfigField(
-            "String",
-            "MICROSOFT_CLIENT_ID",
-            "\"" + averoMicrosoftClientId.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-        )
+        versionCode = 2
+        versionName = "0.2.0-download-only"
+
     }
 
     buildFeatures {
@@ -37,11 +31,7 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-        }
-    }
+
 }
 
 dependencies {
@@ -53,11 +43,10 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("org.apache.commons:commons-compress:1.28.0")
-    implementation("org.tukaani:xz:1.12")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
 }

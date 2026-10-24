@@ -1,76 +1,50 @@
 # Avero Launcher
 
-Avero is an independent **Minecraft: Java Edition launcher for Android**.
+Independent native Android file downloader for Minecraft: Java Edition, written in Kotlin and Jetpack Compose.
 
 > **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
 
-Avero is maintained independently by **yannickfan67-ai**. Project contact and bug reports are handled through this repository's GitHub Issues.
+## Current release: 0.2.0-download-only
 
-It is a fresh Android project rather than a port of the old UN_Nexo desktop UI. The goal is to launch and manage Java Edition cleanly on Android with a native Kotlin + Jetpack Compose interface.
+This version **only downloads, checks and manages game files**. It does not log into Microsoft, store accounts or tokens, launch Minecraft, run a JVM, or connect to game servers. Downloading files does not grant a license to play Minecraft. Gameplay requires legitimate Java Edition ownership and a launcher that authenticates and verifies that ownership.
 
-## Product direction
+### Features
 
-- Minecraft: Java Edition launch flow on Android
-- Microsoft account authentication
-- Minecraft profile / entitlement handling
-- Java runtime management
-- Version installation and instance management
-- Fabric / Forge / NeoForge / Quilt support
-- Modrinth integration
-- JVM arguments and memory controls
-- Renderer / compatibility settings
-- Download progress, logs and crash diagnostics
-- Native Android UI; no WebView shell for the launcher itself
+- Native Android Explore, Downloads, Local and About pages with Traditional Chinese labels.
+- Full official version catalog with search and release/snapshot/historical filters.
+- Offline catalog cache for browsing previously fetched metadata.
+- Persistent download queue with named tasks, manual pause/resume and per-task retry. Interrupted tasks recover paused on restart.
+- SHA-1 and size verification of version metadata, the game client, compatible libraries, logging configuration, asset indexes and asset objects.
+- HTTP Range resume of partial files with integrity digests, bounded retry/backoff, content-range checks and atomic file publication.
+- Reuse verified files, and selectively repair missing or damaged content.
+- Fixed-size asset workers and deduplication by content hash, avoiding concurrent writes for duplicate objects.
+- Official HTTPS delivery host allowlist, validation of every redirect, metadata/file size limits and managed-path validation.
+- JSON download-report export through Android's document picker. Reports contain version IDs, state and timestamps; no account data, credentials, local paths or arbitrary error messages.
+- Application-private storage and disabled Android backups.
 
-## Current state
+The app downloads Java Edition file content; it does not claim those desktop files are a working Android game runtime. The Android-compatible renderer and earlier JVM work are not part of this release.
 
-The repository currently contains the native Android launcher shell, official Mojang metadata parsing, verified/resumable game-file and asset downloads, Mojang rule/argument handling, Microsoft device-code authentication through Minecraft profile/entitlement lookup, managed Android Java runtime installation, and an isolated native JVM probe. CI runs unit tests and produces a debug APK. The remaining major launch blocker is Android-compatible Minecraft/LWJGL native rendering and end-to-end game launch validation.
+## Build
 
-The Android source lives in [`android/`](android/).
+Source: [`android/`](android/). Package: `io.yannickfan.avero`. Android 8.0+ (minSdk 26), compile/target API 37, JDK 17, Gradle 9.6.0, AGP 9.4.0.
 
-- package: `io.yannickfan.avero`
-- minSdk: 26
-- compile/target SDK: 37
-- JDK: 17
-- Gradle: 9.6
-- AGP: 9.4.0
-
-## Microsoft account authentication
-
-Avero uses Microsoft's **public-client device-code flow**. No Microsoft client secret is embedded in the APK.
-
-Create or use an Avero Microsoft app registration configured for personal Microsoft accounts and public client/device-code authentication, then build with:
-
-```bash
-AVERO_MS_CLIENT_ID="<application-client-id>" gradle assembleDebug
+```sh
+cd android
+gradle testDebugUnitTest assembleDebug lintDebug
 ```
 
-GitHub Actions can provide the same non-secret client ID through the `AVERO_MS_CLIENT_ID` environment variable. Builds without it still compile, but the Accounts page will show that Microsoft login is not configured.
+CI runs tests, lint, distribution checks and APK creation. Debug APKs are for testing and are not represented as store-signed production builds. Native C++/NDK, Java runtime archives, client IDs and client secrets are not required to build the current application.
 
-## Android Java runtime
+## Distribution boundary and history
 
-Avero can install Android OpenJDK runtime packages for Java 8, 17, 21 and 25 (depending on device ABI and upstream availability). Runtime archives are downloaded separately, verified with published SHA-256 digests, and extracted into Avero's private runtime directory.
+Earlier authentication, game Activity, JVM bridge, native renderer code and their tests were moved to [`legacy/`](legacy/), outside Gradle source roots. No authentication client ID is generated into BuildConfig. The manifest declares only MainActivity. There is no review-specific toggle or remote mechanism to restore gameplay.
 
-The runtime binaries are **not MIT-licensed Avero code**. See [`THIRD_PARTY.md`](THIRD_PARTY.md) for upstream and license information.
+The old code remains historical, uncompiled development material. A future gameplay release must complete AppID review as applicable and enforce Microsoft authentication plus Minecraft entitlement/profile verification before play or server access. The Android application currently has no configured AppID; approval of the separate PC application's ID must not be described as Android approval.
 
-Avero now includes a native JVM bridge and an isolated Java runtime probe, so installed runtimes can be exercised without risking the main launcher process. This still does not prove Minecraft rendering: the remaining launch milestone is the Android-compatible LWJGL/native renderer layer and end-to-end game launch validation.
+The PC companion is [UN_Nexo](https://github.com/yannickfan67-ai/UN_Nexo).
 
-## Planned architecture
+## Maintainer, privacy and license
 
-See [`LAUNCHER_ARCHITECTURE.md`](LAUNCHER_ARCHITECTURE.md).
+Maintained independently by Yannick Fan / `yannickfan67-ai`. Contact: [GitHub Issues](https://github.com/yannickfan67-ai/Avero-Launcher/issues).
 
-## Development tools
-
-See [`DEV_TOOLS.md`](DEV_TOOLS.md). These are tools used to **develop Avero**, not features inside the launcher.
-
-## Website prototype
-
-The static product site lives in [`web/`](web/).
-
-## Trademark and game files
-
-Minecraft, Mojang and Microsoft names and trademarks belong to their respective owners. Avero does not bundle or redistribute the Minecraft game client; required game files are obtained from the official Minecraft/Mojang delivery endpoints at install time.
-
-## License
-
-Avero's own source code is MIT licensed. See [`LICENSE`](LICENSE). This license does not grant rights to Minecraft game files, branding or third-party dependencies.
+See [PRIVACY.md](PRIVACY.md), [CHANGELOG.md](CHANGELOG.md), [LICENSE](LICENSE), and [THIRD_PARTY.md](THIRD_PARTY.md). The MIT license covers original Avero code, not Minecraft files or third-party dependencies. Game files are requested from official delivery endpoints; they are not bundled in the APK.

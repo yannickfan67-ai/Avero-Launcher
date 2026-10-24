@@ -34,18 +34,25 @@ class AssetInstaller(
     private val downloader: FileDownloader = FileDownloader(),
     private val parallelism: Int = 4
 ) {
+    init { require(parallelism in 1..8) }
+
     suspend fun parseIndex(indexFile: File): List<AssetObjectSpec> = withContext(Dispatchers.IO) {
+        require(indexFile.length() <= 64L * 1024 * 1024) { "Asset index is too large" }
         val root = JSONObject(indexFile.readText())
         val objects = root.getJSONObject("objects")
+        require(objects.length() <= 100000) { "Too many asset entries" }
         buildList {
             val keys = objects.keys()
             while (keys.hasNext()) {
                 val name = keys.next()
                 val entry = objects.getJSONObject(name)
+                val hash = entry.getString("hash")
+                require(hash.matches(Regex("[a-fA-F0-9]{40}"))) { "Invalid asset hash" }
+                require(entry.getLong("size") in 0..FileDownloader.MAX_FILE_BYTES) { "Invalid asset size" }
                 add(
                     AssetObjectSpec(
                         logicalName = name,
-                        hash = entry.getString("hash"),
+                        hash = hash,
                         size = entry.getLong("size")
                     )
                 )
@@ -67,18 +74,19 @@ class AssetInstaller(
         root: File,
         onProgress: (AssetInstallProgress) -> Unit = {}
     ): Int = coroutineScope {
-        val assets = parseIndex(indexFile)
+        val assets = parseIndex(indexFile).distinctBy { it.hash }
         val layout = InstanceLayout(root)
-        val semaphore = Semaphore(parallelism)
+        val next = AtomicInteger(0)
         val completed = AtomicInteger(0)
 
-        assets.map { asset ->
+        List(parallelism) {
             async {
-                semaphore.withPermit {
+                while (true) {
+                    val index = next.getAndIncrement()
+                    if (index >= assets.size) break
+                    val asset = assets[index]
                     val destination = layout.assetObject(asset.hash)
-                    if (!downloader.isValid(asset.downloadSpec, destination)) {
-                        downloader.download(asset.downloadSpec, destination)
-                    }
+                    if (!downloader.isValid(asset.downloadSpec, destination)) downloader.download(asset.downloadSpec, destination)
                     val done = completed.incrementAndGet()
                     onProgress(AssetInstallProgress(done, assets.size, asset.logicalName))
                 }

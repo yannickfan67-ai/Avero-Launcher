@@ -1,6 +1,5 @@
 package io.yannickfan.avero.minecraft
 
-import io.yannickfan.avero.androidnative.AndroidNativeProviderPlan
 
 data class MinecraftVersionSummary(
     val id: String,
@@ -95,22 +94,4 @@ data class RuleContext(
     val features: Map<String, Boolean> = emptyMap()
 )
 
-data class LaunchPlan(
-    val versionId: String,
-    val mainClass: String,
-    val javaMajorVersion: Int,
-    val classpathEntries: List<String>,
-    val jvmArguments: List<String>,
-    val gameArguments: List<String>,
-    val requiresNatives: Boolean = false,
-    val nativeArchives: List<NativeArchivePlan> = emptyList(),
-    val logging: LoggingSpec? = null,
-    val androidNativeProvider: AndroidNativeProviderPlan? = null
-)
-
-data class NativeArchivePlan(
-    val libraryName: String,
-    val classifier: String,
-    val download: DownloadSpec,
-    val extractExcludes: List<String>
-)
+enum class NativeClassifierPolicy { DISABLED, MOJANG_DESKTOP }
